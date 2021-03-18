@@ -1,10 +1,9 @@
+import numpy as np
 import torch.nn as nn
 import torch
 from PIL import Image
 from torchvision import transforms
 import matplotlib.pyplot as plt
-
-
 from NetVladCNN import NetVladCNN
 
 
@@ -45,13 +44,19 @@ input_image = Image.open(filename)
 # Preprocess the image
 preprocess = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),
-    transforms.Resize(256),  # TODO: resize/crop?
-    transforms.CenterCrop(256),
+    # transforms.Resize(256),  # TODO: resize/crop?
+    # transforms.CenterCrop(256),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # TODO: keep these normalize constants?
 ])
 input_tensor = preprocess(input_image)
 x = input_tensor.unsqueeze(0)  # alex_net wants a batch!
 
-y = net.forward(x)
+D = 256
+c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
+
+y = net.forward(x, c)
 print(f"y.size() = {y.size()}")
+
+for i in range(10):
+    print(net.forward(x, c))
