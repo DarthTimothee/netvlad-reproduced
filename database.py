@@ -14,5 +14,6 @@ def get_position(image_id):
     return x, y
 
 
+# Just some test code to make sure it works
 print(get_image_name(5))
 print(get_position(5))
