@@ -2,15 +2,16 @@ import random
 
 
 class TrainingTuple:
-    def __init__(self, query_image):
-        self.query_image = query_image
+    def __init__(self, query_id):
+        self.query_image = query_id
         self.potential_positives = self.__init_potential_positives()
         self.previous_hard_negatives = []
 
-    def get_potential_positives(self):
-        """Returns the list of all the images that are in close geographic proximity
-        to the query image."""
-        return self.potential_positives
+    def get_image(self):
+        return None  # TODO
+
+    def get_best_positive(self):
+        return None  # TODO
 
     def get_hard_negatives(self):
         """Returns a list of the 10 hardest images that are far away from the query image,
@@ -22,6 +23,11 @@ class TrainingTuple:
         # Remember the current hard negatives for the next epoch
         self.previous_hard_negatives = current_hard_negatives
         return current_hard_negatives + previous_hard_negatives
+
+    def __get_potential_positives(self):
+        """Returns the list of all the images that are in close geographic proximity
+        to the query image."""
+        return self.potential_positives
 
     def __init_potential_positives(self):
         """Calculate and return the list of all the images that are
