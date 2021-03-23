@@ -40,6 +40,10 @@ class Vlataset(Dataset):
         input_image = Image.open('G:/School/Deep Learning/data/' + self.get_image_name(query))
         return self.preprocess(input_image)
 
+    def __best_positive(self, training_tuple):
+        best_positive = None
+        return best_positive
+
     def __getitem__(self, index):
         training_tuple = self.training_tuples[index]
         query = training_tuple.query_id

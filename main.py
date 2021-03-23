@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-#from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm as progress
 from NetVladCNN import NetVladCNN
@@ -52,10 +52,10 @@ def train(train_loader, net, optimizer, criterion):
 
         # TODO: keep track of k-of-n 'correct'
         # keep track of loss and accuracy
-        #avg_loss += loss
-        #_, predicted = torch.max(outputs.data, 1)
-        #total += labels.size(0)
-        #correct += (predicted == labels).sum().item()
+        # avg_loss += loss
+        # _, predicted = torch.max(outputs.data, 1)
+        # total += labels.size(0)
+        # correct += (predicted == labels).sum().item()
 
     return avg_loss / len(train_loader), 0  # 100 * correct / total
 
@@ -95,10 +95,10 @@ def test(test_loader, net, criterion):
                 loss += criterion(outputs, best_positive_vlad, n_vlad)
 
             # TODO: keep track of loss and accuracy
-            #avg_loss += loss
-            #_, predicted = torch.max(outputs.data, 1)
-            #total += labels.size(0)
-            #correct += (predicted == labels).sum().item()
+            # avg_loss += loss
+            # _, predicted = torch.max(outputs.data, 1)
+            # total += labels.size(0)
+            # correct += (predicted == labels).sum().item()
 
     return avg_loss / len(test_loader), 0  # 100 * correct / total
 
@@ -109,7 +109,7 @@ def alex_forward(self, x: torch.Tensor) -> torch.Tensor:
 
 if __name__ == '__main__':
     # Create a writer to write to Tensorboard
-    #writer = SummaryWriter()
+    # writer = SummaryWriter()
 
     # Hyper parameters, based on the appendix
     K = 64  # amount of kernels
@@ -158,9 +158,9 @@ if __name__ == '__main__':
         test_loss, test_acc = test(test_loader, net, criterion)
 
         # Write metrics to Tensorboard
-        #writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
-        #writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
+        # writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
+        # writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
 
     print('Finished Training')
-    #writer.flush()
-    #writer.close()
+    # writer.flush()
+    # writer.close()
