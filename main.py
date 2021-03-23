@@ -131,8 +131,8 @@ if __name__ == '__main__':
 
     optimizer = optim.SGD(net.parameters(), lr=5e-1)
 
-    train_set = Vlataset(database_url='./datasets/pitts250k_train.mat')
-    test_set = Vlataset(database_url='./datasets/pitts250k_test.mat')
+    train_set = Vlataset(net, database_url='./datasets/pitts250k_train.mat')
+    test_set = Vlataset(net, database_url='./datasets/pitts250k_test.mat')
     train_loader = DataLoader(train_set, batch_size=batch_size)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
