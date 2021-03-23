@@ -4,7 +4,7 @@ import torch.optim as optim
 # from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm as progress
-from NetVladCNN import NetVladCNN
+from NetVladCNN import NetVladCNN, AlexBase
 from database import Vlataset
 import numpy as np
 
@@ -34,16 +34,13 @@ def train(train_loader, net, optimizer, criterion):
 
         # forward + backward + optimize
         # image = database.get_image(query)
-        K = 64  # amount of kernels
-        D = 256
-        c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
 
-        outputs = net(input_image, c)
+        outputs = net(input_image)
 
-        best_positive_vlad = net(best_positive, c)
+        best_positive_vlad = net(best_positive)
         loss = 0
         for n in hard_negatives:
-            n_vlad = net(n, c)
+            n_vlad = net(n)
             loss += criterion(outputs, best_positive_vlad, n_vlad)
         # loss = criterion(outputs, labels)
 
@@ -81,17 +78,13 @@ def test(test_loader, net, criterion):
 
             input_image, query, best_positive, hard_negatives = training_tuple
 
-            K = 64  # amount of kernels
-            D = 256
-            c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
-
             # forward pass
-            outputs = net(input_image, c)
+            outputs = net(input_image)
 
-            best_positive_vlad = net(best_positive, c)
+            best_positive_vlad = net(best_positive)
             loss = 0
             for n in hard_negatives:
-                n_vlad = net(n, c)
+                n_vlad = net(n)
                 loss += criterion(outputs, best_positive_vlad, n_vlad)
 
             # TODO: keep track of loss and accuracy
@@ -102,9 +95,6 @@ def test(test_loader, net, criterion):
 
     return avg_loss / len(test_loader), 0  # 100 * correct / total
 
-
-def alex_forward(self, x: torch.Tensor) -> torch.Tensor:
-    return self.features(x)
 
 
 if __name__ == '__main__':
@@ -120,16 +110,12 @@ if __name__ == '__main__':
     batch_size = 1  # TODO: batch size is 4 tuples
     epochs = 2  # but usually convergence occurs much faster
 
-    # Setup base network
-    alex_base = torch.hub.load('pytorch/vision:v0.6.0', 'alexnet', pretrained=True)
-    alex_base.features = alex_base.features[:11]  # cut off before last ReLu
-    alex_base.avgpool = nn.Identity()  # bypass avg_pool and classifier
-    alex_base.classifier = nn.Identity()  # bypass avg_pool and classifier
-    alex_base.forward = type(alex_base.forward)(alex_forward,
-                                                alex_base)  # TODO: find a better way to override this function. Maybe by extending the AlexNet module?
-
     # Create instance of Network
-    net = NetVladCNN(base_cnn=alex_base, K=K)
+    base_network = AlexBase()
+    D = base_network.get_output_dim()
+
+    c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
+    net = NetVladCNN(base_cnn=base_network, K=K, c=c)
 
 
     def custom_distance(x1, x2):
