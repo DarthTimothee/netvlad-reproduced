@@ -2,6 +2,7 @@ import math
 import random
 from collections import defaultdict
 import scipy.io
+import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -25,8 +26,9 @@ class Vlataset(Dataset):
             # TODO: keep these normalize constants?
         ])
         self.pairwise_distance = nn.PairwiseDistance()
-        self.training_tuples = [TrainingTuple(self.__query_name(i)) for i in range(self.num_queries)]
+        self.training_tuples = [TrainingTuple(i, self.__query_name(i)) for i in range(self.num_queries)]
         self.__init_potential_positives()
+        self.counter = 0
 
     def __init_potential_positives(self):
         # Group all the queries with the same position together
@@ -54,37 +56,50 @@ class Vlataset(Dataset):
                             training_tuple.potential_positives.append(image_index)
 
     def __vlad_distance(self, vlad1, vlad2):
-        return self.pairwise_distance(vlad1 - vlad2)  # TODO: is this correct?
+        return torch.sum(self.pairwise_distance(vlad1, vlad2)).detach().numpy()  # TODO: is this correct?
 
     def __image_distance(self, image1, image2):
+        self.counter += 1
+        print(self.counter)
         # TODO: use cache
-        vlad1 = self.net(self.__get_tensor(image1))
-        vlad2 = self.net(self.__get_tensor(image2))
+        #with torch.no_grad():
+        vlad1 = self.net(self.__get_tensor(image1).unsqueeze(0))
+        vlad2 = self.net(self.__get_tensor(image2).unsqueeze(0))
         return self.__vlad_distance(vlad1, vlad2)
 
     def __best_positive(self, training_tuple):
+        print("sorting potential positives")
         sorted_positives = sorted(training_tuple.potential_positives,
                                   key=lambda x: self.__image_distance(self.__image_name(x), training_tuple.query))
         return sorted_positives[0]
 
+    def __geo_distance(self, query_index, image_index):
+        x1, y1 = self.__query_position(query_index)
+        x2, y2 = self.__image_position(image_index)
+        return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
     def __get_1000_negatives(self, training_tuple):
+        print("sampling 1000 negatives")
         negatives = [0] * 1000
         while len(negatives) < 1000:  # TODO: maybe optimize later?
-            image_id = random.randint(0, self.num_images)
-            if image_id != training_tuple.query_id \
-                    and image_id not in training_tuple.previous_hard_negatives \
-                    and self.geo_distance(image_id, training_tuple.query_id) > 25:
-                negatives.append(image_id)
+            print(str(len(negatives)) + "/1000")
+            image_index = random.randint(0, self.num_images)
+            if image_index != training_tuple.query_id \
+                    and image_index not in training_tuple.previous_hard_negatives \
+                    and self.__geo_distance(training_tuple.query_index, image_index) > 25:
+                negatives.append(image_index)
+        print("sorting 1000 negatives")
         return negatives
 
     def __hard_negatives(self, training_tuple):
+        self.counter = 0
         sampled_negatives = sorted(self.__get_1000_negatives(training_tuple),
                                    key=lambda x: self.__image_distance(self.__image_name(x), training_tuple.query))
         current_hard_negatives = sampled_negatives[:10]
 
         # Remember the current hard negatives for the next epoch
-        previous_hard_negatives = self.previous_hard_negatives
-        self.previous_hard_negatives = current_hard_negatives
+        previous_hard_negatives = training_tuple.previous_hard_negatives
+        training_tuple.previous_hard_negatives = current_hard_negatives
 
         return current_hard_negatives + previous_hard_negatives
 
