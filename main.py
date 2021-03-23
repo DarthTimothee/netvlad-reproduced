@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm as progress
 from NetVladCNN import NetVladCNN
 from database import Vlataset
+import numpy as np
 
 
 def train(train_loader, net, optimizer, criterion):
@@ -24,17 +25,26 @@ def train(train_loader, net, optimizer, criterion):
     total = 0
 
     # iterate through batches
-    for i, training_tuple in enumerate(train_loader):
+    for training_tuple in progress(train_loader):
+
+        input_image, query, best_positive, hard_negatives = training_tuple
 
         # zero the parameter gradients
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = net(training_tuple.get_image())
+        # image = database.get_image(query)
+        K = 64  # amount of kernels
+        D = 256
+        c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
 
+        outputs = net(input_image, c)
+
+        best_positive_vlad = net(best_positive, c)
         loss = 0
-        for n in training_tuple.get_hard_negatives():
-            loss += criterion(outputs, training_tuple.get_best_positive(), n)
+        for n in hard_negatives:
+            n_vlad = net(n, c)
+            loss += criterion(outputs, best_positive_vlad, n_vlad)
         # loss = criterion(outputs, labels)
 
         loss.backward()
@@ -42,12 +52,12 @@ def train(train_loader, net, optimizer, criterion):
 
         # TODO: keep track of k-of-n 'correct'
         # keep track of loss and accuracy
-        avg_loss += loss
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
+        #avg_loss += loss
+        #_, predicted = torch.max(outputs.data, 1)
+        #total += labels.size(0)
+        #correct += (predicted == labels).sum().item()
 
-    return avg_loss / len(train_loader), 100 * correct / total
+    return avg_loss / len(train_loader), 0  # 100 * correct / total
 
 
 def test(test_loader, net, criterion):
@@ -67,24 +77,30 @@ def test(test_loader, net, criterion):
     # Use torch.no_grad to skip gradient calculation, not needed for evaluation
     with torch.no_grad():
         # iterate through batches
-        for data in test_loader:
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
+        for i, training_tuple in enumerate(test_loader):
+
+            input_image, query, best_positive, hard_negatives = training_tuple
+
+            K = 64  # amount of kernels
+            D = 256
+            c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
 
             # forward pass
-            outputs = net(inputs)
+            outputs = net(input_image, c)
+
+            best_positive_vlad = net(best_positive, c)
             loss = 0
-            for n in negatives:
-                loss += criterion(query, positive, n)
-            # loss = criterion(outputs, labels)
+            for n in hard_negatives:
+                n_vlad = net(n, c)
+                loss += criterion(outputs, best_positive_vlad, n_vlad)
 
             # TODO: keep track of loss and accuracy
-            avg_loss += loss
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            #avg_loss += loss
+            #_, predicted = torch.max(outputs.data, 1)
+            #total += labels.size(0)
+            #correct += (predicted == labels).sum().item()
 
-    return avg_loss / len(test_loader), 100 * correct / total
+    return avg_loss / len(test_loader), 0  # 100 * correct / total
 
 
 def alex_forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -93,7 +109,7 @@ def alex_forward(self, x: torch.Tensor) -> torch.Tensor:
 
 if __name__ == '__main__':
     # Create a writer to write to Tensorboard
-    writer = SummaryWriter()
+    #writer = SummaryWriter()
 
     # Hyper parameters, based on the appendix
     K = 64  # amount of kernels
@@ -101,8 +117,8 @@ if __name__ == '__main__':
     lr = 0.001  # or 0.0001 depending on the experiment, which is halved every 5 epochs
     momentum = 0.9
     wd = 0.001
-    batch_size = 4  # batch size is 4 tuples
-    epochs = 30  # but usually convergence occurs much faster
+    batch_size = 1  # TODO: batch size is 4 tuples
+    epochs = 2  # but usually convergence occurs much faster
 
     # Setup base network
     alex_base = torch.hub.load('pytorch/vision:v0.6.0', 'alexnet', pretrained=True)
@@ -142,9 +158,9 @@ if __name__ == '__main__':
         test_loss, test_acc = test(test_loader, net, criterion)
 
         # Write metrics to Tensorboard
-        writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
-        writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
+        #writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
+        #writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
 
     print('Finished Training')
-    writer.flush()
-    writer.close()
+    #writer.flush()
+    #writer.close()

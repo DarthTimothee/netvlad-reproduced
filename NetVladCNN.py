@@ -19,7 +19,7 @@ class NetVladCNN(torch.nn.Module):
         # TODO: make it batch proof, right now it can handle only batches of size 1
         feature_map = self.base_cnn(x)
         # feature_map is now a (D x N) tensor
-        y = self.netvlad_layer(feature_map)
+        y = self.netvlad_layer(feature_map, c)
         return y
 
 
@@ -88,8 +88,10 @@ class VladCore(nn.Module):
         assert a_bar.shape == (K, N)
 
         V = torch.zeros((K, D))
-        with torch.no_grad():  # TODO: this fixes an error so we don't need to go to numpy, but will this cause issues when optimizing?
-            for k in range(K):
-                V[k] = torch.mv((x.T - c[k]).T, a_bar[k].double())
+        x_numpy = x.detach().numpy()
+        #with torch.no_grad():  # TODO: this fixes an error so we don't need to go to numpy, but will this cause issues when optimizing?
+        for k in range(K):
+            asdf = (x_numpy.T - c[k]).T
+            V[k] = torch.mv(torch.tensor(asdf), a_bar[k].double())
 
         return V

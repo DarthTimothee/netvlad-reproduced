@@ -3,20 +3,17 @@ import random
 
 class TrainingTuple:
     def __init__(self, query_id):
-        self.query_image = query_id
+        self.query_id = query_id
         self.potential_positives = self.__init_potential_positives()
         self.previous_hard_negatives = []
 
-    def get_image(self):
-        return None  # TODO
-
     def get_best_positive(self):
-        return None  # TODO
+        return self.query_id  # TODO
 
-    def get_hard_negatives(self):
+    def get_hard_negatives(self, num_images):
         """Returns a list of the 10 hardest images that are far away from the query image,
         plus the 10 hardest negatives from the previous epoch."""
-        sampled_negatives = self.__get_1000_negatives()
+        sampled_negatives = self.__get_1000_negatives(num_images)
         # TODO: sort the list based on 'difficulty'
         previous_hard_negatives = self.previous_hard_negatives
         current_hard_negatives = sampled_negatives[:10]
@@ -32,14 +29,14 @@ class TrainingTuple:
     def __init_potential_positives(self):
         """Calculate and return the list of all the images that are
         in close geographic proximity to the query image."""
-        return [self.query_image]  # TODO
+        return [self.query_id]  # TODO
 
-    def __get_1000_negatives(self):
+    def __get_1000_negatives(self, num_images):
         """Returns a list of 1000 randomly sampled image that are far away (geographically)
         from the query image."""
         negatives = list()
         while len(negatives) < 1000:
-            image = random.randint(0, 250000)  # TODO: don't hardcode
+            image = random.randint(0, num_images)  # TODO: hardcode correct values
             if image not in self.potential_positives \
                     and image not in self.previous_hard_negatives:
                 negatives.append(image)

@@ -32,7 +32,7 @@ alex_base.forward = type(alex_base.forward)(alex_forward, alex_base)  # TODO: fi
 net = NetVladCNN(base_cnn=alex_base, K=K)
 
 # Import an image
-filename = "data/000000_pitch1_yaw1.jpg"
+filename = "G:/School/Deep Learning/data/000/000000_pitch1_yaw1.jpg"
 input_image = Image.open(filename)
 
 # Show the image
