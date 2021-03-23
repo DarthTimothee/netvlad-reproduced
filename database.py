@@ -1,6 +1,6 @@
 import math
 import random
-import numpy as np
+from collections import defaultdict
 import scipy.io
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -8,16 +8,14 @@ from torchvision import transforms
 from PIL import Image
 
 from TrainingTuple import TrainingTuple
-import time
 
 
 class Vlataset(Dataset):
-    def __init__(self, net, database_url='./datasets/pitts250k_train.mat'):
+    def __init__(self, net, database_url):
         self.net = net
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        # TODO: load all data from the .mat into variables
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             # transforms.Resize(256),  # TODO: resize/crop?
@@ -27,47 +25,33 @@ class Vlataset(Dataset):
             # TODO: keep these normalize constants?
         ])
         self.pairwise_distance = nn.PairwiseDistance()
-        self.training_tuples = [TrainingTuple(self.__query_name(i)) for i in range(self.num_queries)]  # TODO
-        start = time.time()
+        self.training_tuples = [TrainingTuple(self.__query_name(i)) for i in range(self.num_queries)]
         self.__init_potential_positives()
-        print("__init_potential_positives:", (start - time.time()))
-
-    def __geo_distance(self, query_index, image_index):
-        x1, y1 = self.__query_position(query_index)
-        x2, y2 = self.__image_position(image_index)
-        return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
-
-    def __query_position(self, query_index):
-        x = self.db.get('dbStruct')[0][0][4][0][query_index]
-        y = self.db.get('dbStruct')[0][0][4][1][query_index]
-        return x, y
-
-    def __image_position(self, image_index):
-        x = self.db.get('dbStruct')[0][0][2][0][image_index]
-        y = self.db.get('dbStruct')[0][0][2][1][image_index]
-        return x, y
 
     def __init_potential_positives(self):
-        for query_index, tt in enumerate(self.training_tuples):
-            print(query_index)
-            for image_index in range(self.num_images):
-                if self.__geo_distance(query_index, image_index) < 10:
-                    tt.potential_positives.append(image_index)
+        # Group all the queries with the same position together
+        pos_query = defaultdict(list)
+        for query_index in range(self.num_queries):
+            x, y = self.__image_position(query_index)
+            pos_query[(x, y)].append(query_index)
 
-    def __write_positives_to_file(self):
-        for tt in self.training_tuples:
-            arr = np.array(tt.potential_positives)
-            np.savetxt()
+        # Group all the images with the same position together
+        pos_image = defaultdict(list)
+        for image_index in range(self.num_images):
+            x, y = self.__image_position(image_index)
+            pos_image[(x, y)].append(image_index)
 
-    def __query_name(self, image_id):
-        return self.db.get('dbStruct')[0][0][3][image_id][0][0]
-
-    def __image_name(self, image_id):
-        return self.db.get('dbStruct')[0][0][1][image_id][0][0]
-
-    def __get_tensor(self, query):
-        input_image = Image.open('G:/School/Deep Learning/data/' + query)
-        return self.preprocess(input_image)
+        # Find the image positions close to the query positions
+        for pos_q, query_indices in pos_query.items():
+            for pos_i, image_indices in pos_image.items():
+                x1, y1 = pos_q
+                x2, y2 = pos_i
+                if math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) < 10:
+                    # Store all the image positions in all the training tuples
+                    for query_index in query_indices:
+                        training_tuple = self.training_tuples[query_index]
+                        for image_index in image_indices:
+                            training_tuple.potential_positives.append(image_index)
 
     def __vlad_distance(self, vlad1, vlad2):
         return self.pairwise_distance(vlad1 - vlad2)  # TODO: is this correct?
@@ -88,7 +72,7 @@ class Vlataset(Dataset):
         while len(negatives) < 1000:  # TODO: maybe optimize later?
             image_id = random.randint(0, self.num_images)
             if image_id != training_tuple.query_id \
-                    and image_id not in training_tuple.previous_hard_negatives\
+                    and image_id not in training_tuple.previous_hard_negatives \
                     and self.geo_distance(image_id, training_tuple.query_id) > 25:
                 negatives.append(image_id)
         return negatives
@@ -103,6 +87,26 @@ class Vlataset(Dataset):
         self.previous_hard_negatives = current_hard_negatives
 
         return current_hard_negatives + previous_hard_negatives
+
+    def __get_tensor(self, query):
+        input_image = Image.open('G:/School/Deep Learning/data/' + query)
+        return self.preprocess(input_image)
+
+    def __query_position(self, query_index):
+        x = self.db.get('dbStruct')[0][0][4][0][query_index]
+        y = self.db.get('dbStruct')[0][0][4][1][query_index]
+        return x, y
+
+    def __image_position(self, image_index):
+        x = self.db.get('dbStruct')[0][0][2][0][image_index]
+        y = self.db.get('dbStruct')[0][0][2][1][image_index]
+        return x, y
+
+    def __query_name(self, image_id):
+        return self.db.get('dbStruct')[0][0][3][image_id][0][0]
+
+    def __image_name(self, image_id):
+        return self.db.get('dbStruct')[0][0][1][image_id][0][0]
 
     def __getitem__(self, index):
         training_tuple = self.training_tuples[index]
