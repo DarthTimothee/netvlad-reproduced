@@ -6,21 +6,23 @@ import numpy as np
 
 class NetVladCNN(torch.nn.Module):
 
-    def __init__(self, base_cnn, K):
+    def __init__(self, base_cnn, K, c):
         # TODO: input params
         super(NetVladCNN, self).__init__()
 
         self.base_cnn = base_cnn
-        # TODO: get D from base_cnn
-        D = 256
-        self.netvlad_layer = NetVladLayer(K=K, D=D)
+        self.c = c
+        self.D = base_cnn.get_output_dim()
+        self.netvlad_layer = NetVladLayer(K=K, D=self.D)
 
-    def forward(self, x, c):
+    def forward(self, x):
         # TODO: make it batch proof, right now it can handle only batches of size 1
         feature_map = self.base_cnn(x)
         # feature_map is now a (D x N) tensor
-        y = self.netvlad_layer(feature_map, c)
-        return y
+        return self.netvlad_layer(feature_map, self.c)
+
+    def set_clusters(self, c):
+        self.c = c
 
 
 class NetVladLayer(nn.Module):
@@ -95,3 +97,19 @@ class VladCore(nn.Module):
             V[k] = torch.mv(torch.tensor(asdf), a_bar[k].double())
 
         return V
+
+
+class AlexBase(nn.Module):
+
+    def __init__(self):
+        super(AlexBase, self).__init__()
+
+        # Setup base network
+        self.full_cnn = torch.hub.load('pytorch/vision:v0.6.0', 'alexnet', pretrained=True)
+        self.features = self.full_cnn.features[:11]
+
+    def forward(self, x):
+        return self.features(x)
+
+    def get_output_dim(self):
+        return self.features[-1].out_channels  # TODO: klopt dit?
