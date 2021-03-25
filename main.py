@@ -107,8 +107,8 @@ if __name__ == '__main__':
     lr = 0.001  # or 0.0001 depending on the experiment, which is halved every 5 epochs
     momentum = 0.9
     wd = 0.001
-    batch_size = 1  # TODO: batch size is 4 tuples
-    epochs = 2  # but usually convergence occurs much faster
+    batch_size = 4  # TODO: batch size is 4 tuples
+    epochs = 2  # TODO: 32 but usually convergence occurs much faster
 
     # Create instance of Network
     base_network = AlexBase()
