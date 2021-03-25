@@ -1,13 +1,14 @@
+import os
+
+import psutil
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 
 class NetVladCNN(torch.nn.Module):
 
     def __init__(self, base_cnn, K, c):
-        # TODO: input params
         super(NetVladCNN, self).__init__()
 
         self.base_cnn = base_cnn
@@ -22,7 +23,6 @@ class NetVladCNN(torch.nn.Module):
         output:
                  (K, N, batch_size)
         """
-
         feature_map = self.base_cnn(x)
         # feature_map is now a (D x N) tensor
         return self.netvlad_layer(feature_map, self.c)
@@ -30,15 +30,29 @@ class NetVladCNN(torch.nn.Module):
     def set_clusters(self, c):
         self.c = c
 
+    def freeze(self):
+        self.netvlad_layer.freeze()
+
+    def unfreeze(self):
+        self.netvlad_layer.unfreeze()
+
 
 class NetVladLayer(nn.Module):
 
-    def __init__(self, K, D):
+    def __init__(self, K, D, bias=False):
         super(NetVladLayer, self).__init__()
         self.K = K
         self.D = D
-        self.conv = nn.Conv2d(in_channels=D, out_channels=K, kernel_size=(1, 1), bias=True)  # TODO: bias?
+        self.conv = nn.Conv2d(in_channels=D, out_channels=K, kernel_size=(1, 1), bias=bias)
         self.vlad_core = VladCore(K, D)
+
+    def freeze(self):
+        for param in self.conv.parameters():
+            param.requires_grad = False
+
+    def unfreeze(self):
+        for param in self.conv.parameters():
+            param.requires_grad = True
 
     def forward(self, x, c):
         """
@@ -95,20 +109,15 @@ class VladCore(nn.Module):
         assert a_bar.shape == (batch_size, K, N)
 
         V = torch.zeros((batch_size, K, D))
-        x_numpy = x.detach().numpy()
+        # x_numpy = x.T.detach().numpy()
         # with torch.no_grad():  # TODO: this fixes an error so we don't need to go to numpy, but will this cause issues when optimizing?
         for b in range(batch_size):
             for k in range(K):
-                # print(f"x_numpy.T.shape: {x_numpy.T.shape}")
-                # print(f"c.shape: {c.shape}")
-                A = torch.tensor(x_numpy.T - c[None, k][:, :, None])  # TODO: probably better syntax for this?
+                A = x.T - c[None, k][:, :, None]  # TODO: probably better syntax for this?
                 B = a_bar[:, k].double()
-                # print(f"A.shape: {A.shape}")
-                # print(f"B.shape: {B.shape}")
                 Y = torch.tensordot(A[:, :, b], B[b, :], dims=([0], [0]))
-                # print(f"Y.shape: {Y.shape}")
-
                 V[b, k] = Y
+                del A, B, Y
 
         return V.T
 
@@ -122,8 +131,11 @@ class AlexBase(nn.Module):
         self.full_cnn = torch.hub.load('pytorch/vision:v0.6.0', 'alexnet', pretrained=True)
         self.features = self.full_cnn.features[:11]
 
+        for param in self.features.parameters():
+            param.requires_grad = False
+
     def forward(self, x):
-        return self.features(x)
+        return self.features(x.cpu())
 
     def get_output_dim(self):
         return self.features[-1].out_channels  # TODO: klopt dit?
