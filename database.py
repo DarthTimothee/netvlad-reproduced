@@ -13,14 +13,16 @@ class Database:
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            # transforms.Resize(256),  # TODO: resize/crop?
-            # transforms.CenterCrop(256),
+            transforms.Resize(100),  # TODO: resize/crop?
+            transforms.CenterCrop(100),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             # TODO: keep these normalize constants?
         ])
-        self.query_cache = Cache(self, net)
-        self.image_cache = Cache(self, net)
+        self.cache = Cache(self, net)
+
+    def update_cache(self):
+        self.cache.update()
 
     def geo_distance(self, query_id, image_id):
         x1, y1 = self.query_position(query_id)
@@ -35,14 +37,14 @@ class Database:
         input_image = Image.open('G:/School/Deep Learning/data/' + self.image_name(image_id))
         return self.preprocess(input_image)
 
-    def query_position(self, query_index):
-        x = self.db.get('dbStruct')[0][0][4][0][query_index]
-        y = self.db.get('dbStruct')[0][0][4][1][query_index]
+    def query_position(self, query_id):
+        x = self.db.get('dbStruct')[0][0][4][0][query_id]
+        y = self.db.get('dbStruct')[0][0][4][1][query_id]
         return x, y
 
-    def image_position(self, image_index):
-        x = self.db.get('dbStruct')[0][0][2][0][image_index]
-        y = self.db.get('dbStruct')[0][0][2][1][image_index]
+    def image_position(self, image_id):
+        x = self.db.get('dbStruct')[0][0][2][0][image_id]
+        y = self.db.get('dbStruct')[0][0][2][1][image_id]
         return x, y
 
     def query_name(self, query_id):

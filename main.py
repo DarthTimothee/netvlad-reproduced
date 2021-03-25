@@ -131,8 +131,8 @@ if __name__ == '__main__':
 
     optimizer = optim.SGD(net.parameters(), lr=5e-1)
 
-    train_database = Database('./datasets/pitts250k_train.mat', net)
-    test_database = Database('./datasets/pitts250k_test.mat', net)
+    train_database = Database('./datasets/pitts30k_train.mat', net)
+    test_database = Database('./datasets/pitts30k_test.mat', net)
     train_set = Vlataset(train_database)
     test_set = Vlataset(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)
@@ -140,10 +140,12 @@ if __name__ == '__main__':
 
     for epoch in progress(range(epochs)):  # loop over the dataset multiple times
         # Train on data
-        train_loss, train_acc = train(train_database, train_loader, net, optimizer, criterion)
+        train_database.update_cache()
+        train_loss, train_acc = train(train_loader, net, optimizer, criterion)
 
         # Test on data
-        test_loss, test_acc = test(test_database, test_loader, net, criterion)
+        test_database.update_cache()
+        test_loss, test_acc = test(test_loader, net, criterion)
 
         # Write metrics to Tensorboard
         # writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
