@@ -1,18 +1,15 @@
 
 CORRECT
-- TrainingTuple.get_best_positive
-- TrainingTuple.get_hard_negatives
-- network batch proof maken
 - clusters
+- whitening
+- fmax
 
 OTHER
 - vgg16 base network
-- refactor base network (Timo)
-- vladvector cache
+- cache RAM proof maken (naar file schrijven; memmap)
 - alle pre-processing in 1x doen (+ naar file schrijven?)
 - time performance
-- whitening
-- fmax
+- forward pass sneller maken
 - plotjes maken
     - k-of-n
     - alle stats bijhouden

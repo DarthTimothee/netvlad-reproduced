@@ -1,6 +1,3 @@
-import os
-
-import psutil
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -135,7 +132,7 @@ class AlexBase(nn.Module):
             param.requires_grad = False
 
     def forward(self, x):
-        return self.features(x.cpu())
+        return self.features(x)
 
     def get_output_dim(self):
         return self.features[-1].out_channels  # TODO: klopt dit?
