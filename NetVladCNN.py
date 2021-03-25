@@ -9,7 +9,8 @@ class NetVladCNN(torch.nn.Module):
         super(NetVladCNN, self).__init__()
 
         self.base_cnn = base_cnn
-        self.c = c
+        self.c = torch.from_numpy(c)
+        # self.c.unsqueeze_(0).unsqueeze_(-1)  # Add extra dimensions in-place (required for subtracting later
         self.D = base_cnn.get_output_dim()
         self.netvlad_layer = NetVladLayer(K=K, D=self.D)
 
@@ -25,7 +26,7 @@ class NetVladCNN(torch.nn.Module):
         return self.netvlad_layer(feature_map, self.c)
 
     def set_clusters(self, c):
-        self.c = c
+        self.c = torch.from_numpy(c)
 
     def freeze(self):
         self.netvlad_layer.freeze()
@@ -105,18 +106,9 @@ class VladCore(nn.Module):
         assert x.shape == (batch_size, D, N)
         assert a_bar.shape == (batch_size, K, N)
 
-        V = torch.zeros((batch_size, K, D))
-        # x_numpy = x.T.detach().numpy()
-        # with torch.no_grad():  # TODO: this fixes an error so we don't need to go to numpy, but will this cause issues when optimizing?
-        for b in range(batch_size):
-            for k in range(K):
-                A = x.T - c[None, k][:, :, None]  # TODO: probably better syntax for this?
-                B = a_bar[:, k].double()
-                Y = torch.tensordot(A[:, :, b], B[b, :], dims=([0], [0]))
-                V[b, k] = Y
-                del A, B, Y
-
-        return V.T
+        R = c * torch.sum(a_bar, dim=2).unsqueeze(-1)
+        L = torch.bmm(a_bar, x.permute(0, 2, 1))
+        return (L + R).T
 
 
 class AlexBase(nn.Module):
