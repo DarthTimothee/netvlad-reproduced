@@ -5,7 +5,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm as progress
 from NetVladCNN import NetVladCNN, AlexBase
-from database import Vlataset
+from database import Database
+from vlataset import Vlataset
 import numpy as np
 
 
@@ -27,7 +28,7 @@ def train(train_loader, net, optimizer, criterion):
     # iterate through batches
     for training_tuple in progress(train_loader):
 
-        input_image, query, best_positive, hard_negatives = training_tuple
+        query_id, input_image, best_positive, hard_negatives = training_tuple
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -76,7 +77,7 @@ def test(test_loader, net, criterion):
         # iterate through batches
         for i, training_tuple in enumerate(test_loader):
 
-            input_image, query, best_positive, hard_negatives = training_tuple
+            query_id, input_image, best_positive, hard_negatives = training_tuple
 
             # forward pass
             outputs = net(input_image)
@@ -94,7 +95,6 @@ def test(test_loader, net, criterion):
             # correct += (predicted == labels).sum().item()
 
     return avg_loss / len(test_loader), 0  # 100 * correct / total
-
 
 
 if __name__ == '__main__':
@@ -131,17 +131,19 @@ if __name__ == '__main__':
 
     optimizer = optim.SGD(net.parameters(), lr=5e-1)
 
-    train_set = Vlataset(net, database_url='./datasets/pitts250k_train.mat')
-    test_set = Vlataset(net, database_url='./datasets/pitts250k_test.mat')
+    train_database = Database('./datasets/pitts250k_train.mat', net)
+    test_database = Database('./datasets/pitts250k_test.mat', net)
+    train_set = Vlataset(train_database)
+    test_set = Vlataset(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
     for epoch in progress(range(epochs)):  # loop over the dataset multiple times
         # Train on data
-        train_loss, train_acc = train(train_loader, net, optimizer, criterion)
+        train_loss, train_acc = train(train_database, train_loader, net, optimizer, criterion)
 
         # Test on data
-        test_loss, test_acc = test(test_loader, net, criterion)
+        test_loss, test_acc = test(test_database, test_loader, net, criterion)
 
         # Write metrics to Tensorboard
         # writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
