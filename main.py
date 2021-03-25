@@ -75,7 +75,7 @@ def test(test_loader, net, criterion):
     # Use torch.no_grad to skip gradient calculation, not needed for evaluation
     with torch.no_grad():
         # iterate through batches
-        for i, training_tuple in enumerate(test_loader):
+        for training_tuple in progress(train_loader):
 
             query_id, input_image, best_positive, hard_negatives = training_tuple
 

@@ -10,8 +10,8 @@ class Vlataset(Dataset):
     def __init__(self, database):
         self.database = database
         self.pairwise_distance = nn.PairwiseDistance()
-        self.potential_positives = [[]] * self.database.num_queries
-        self.previous_hard_negatives = [[]] * self.database.num_queries
+        self.potential_positives = [list() for _ in range(self.database.num_queries)]
+        self.previous_hard_negatives = [list() for _ in range(self.database.num_queries)]
         self.__init_potential_positives()
 
     def __init_potential_positives(self):
@@ -43,27 +43,23 @@ class Vlataset(Dataset):
         return torch.sum(self.pairwise_distance(vlad1, vlad2)).detach().numpy()  # TODO: is this correct?
 
     def __distance_to_query(self, query_id, image_id):
-        vlad1 = self.database.cache.query_vlads[query_id]
-        vlad2 = self.database.cache.image_vlads[image_id]
+        vlad1 = torch.tensor(self.database.cache.query_vlads[query_id])
+        vlad2 = torch.tensor(self.database.cache.image_vlads[image_id])
         return self.__vlad_distance(vlad1, vlad2)
 
     def __best_positive(self, query_id):
-        print("sorting potential positives")
         sorted_positives = sorted(self.potential_positives[query_id],
                                   key=lambda image_id: self.__distance_to_query(query_id, image_id))
         return sorted_positives[0]
 
     def __get_1000_negatives(self, query_id):
-        print("sampling 1000 negatives")
-        negatives = [0] * 1000
+        negatives = list()
         while len(negatives) < 1000:  # TODO: maybe optimize later?
-            print(str(len(negatives)) + "/1000")
-            image_id = random.randint(0, self.database.num_images)
+            image_id = random.randint(0, self.database.num_images - 1)
             if image_id != query_id \
                     and image_id not in self.previous_hard_negatives[query_id] \
                     and self.database.geo_distance(query_id, image_id) > 25:
                 negatives.append(image_id)
-        print("sorting 1000 negatives")
         return negatives
 
     def __hard_negatives(self, query_id):
@@ -83,4 +79,4 @@ class Vlataset(Dataset):
         return query_id, query_tensor, positive_tensor, negative_tensors
 
     def __len__(self):
-        return len(self.database.num_queries)
+        return self.database.num_queries
