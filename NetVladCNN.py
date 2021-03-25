@@ -20,7 +20,7 @@ class NetVladCNN(torch.nn.Module):
         output:
                  (K, N, batch_size)
         """
-        feature_map = self.base_cnn(x)
+        feature_map = self.base_cnn(x.cpu())
         # feature_map is now a (D x N) tensor
         return self.netvlad_layer(feature_map, self.c)
 

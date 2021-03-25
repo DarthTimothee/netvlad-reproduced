@@ -8,6 +8,43 @@ from NetVladCNN import NetVladCNN, AlexBase
 from database import Database
 from vlataset import Vlataset
 import numpy as np
+import os, psutil
+import gc
+
+use_torch_summary = False
+try:
+    from torchsummary import summary
+    use_torch_summary = True
+except ImportError:
+    pass
+
+use_tensorboard = False
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    use_tensorboard = True
+except ImportError:
+    pass
+
+
+process = psutil.Process(os.getpid())
+
+
+def ram_usage(pref="RAM usage"):
+    print(f"{pref}: {process.memory_info().rss / 10 ** 6} MBs")  # in MBs
+
+
+def current_tensors():
+    # return
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                print(type(obj), obj.size())
+        except:
+            pass
+
+
+def custom_distance(x1, x2):
+    return pairwise_distance(x1, x2) ** 2
 
 
 def train(train_loader, net, optimizer, criterion):
@@ -25,10 +62,26 @@ def train(train_loader, net, optimizer, criterion):
     correct = 0
     total = 0
 
+    # net.freeze()
+
     # iterate through batches
     for training_tuple in progress(train_loader):
+        # print(f"===== batch {i + 1} / {len(train_loader)} =====")
+        ram_usage()
+        # current_tensors()
 
         query_id, input_image, best_positive, hard_negatives = training_tuple
+
+        # print(input_image.shape)
+        # print(best_positive.shape)
+        # print(hard_negatives.shape)
+
+        # big_batch = torch.cat([input_image, best_positive, *hard_negatives])
+        # net(big_batch)
+        # continue
+
+        if use_tensorboard:
+            writer.add_graph(net, input_image)
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -39,11 +92,22 @@ def train(train_loader, net, optimizer, criterion):
         outputs = net(input_image)
 
         best_positive_vlad = net(best_positive)
+        del best_positive
         loss = 0
-        for n in hard_negatives:
+        for j, n in enumerate(hard_negatives):
+            # print(f"for negative {j} / {len(hard_negatives)}:")
+            # ram_usage()
+
             n_vlad = net(n)
             loss += criterion(outputs, best_positive_vlad, n_vlad)
-        # loss = criterion(outputs, labels)
+
+            del n_vlad
+            del n
+
+        del best_positive_vlad
+        del outputs
+
+        gc.collect()
 
         loss.backward()
         optimizer.step()
@@ -99,7 +163,13 @@ def test(test_loader, net, criterion):
 
 if __name__ == '__main__':
     # Create a writer to write to Tensorboard
-    # writer = SummaryWriter()
+    use_tensorboard = False
+    if use_tensorboard:
+        writer = SummaryWriter()
+
+    timos_arme_laptopje = True
+    if timos_arme_laptopje:
+        torch.set_num_threads(4)
 
     # Hyper parameters, based on the appendix
     K = 64  # amount of kernels
@@ -117,10 +187,8 @@ if __name__ == '__main__':
     c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
     net = NetVladCNN(base_cnn=base_network, K=K, c=c)
 
-
-    def custom_distance(x1, x2):
-        return pairwise_distance(x1, x2) ** 2
-
+    if use_torch_summary:
+        summary(net, (3, 480, 640))
 
     # Create loss function and optimizer
     pairwise_distance = nn.PairwiseDistance()
@@ -131,8 +199,8 @@ if __name__ == '__main__':
 
     optimizer = optim.SGD(net.parameters(), lr=5e-1)
 
-    train_database = Database('./datasets/pitts30k_train.mat', net)
-    test_database = Database('./datasets/pitts30k_test.mat', net)
+    train_database = Database(net, './datasets/pitts30k_train.mat')
+    test_database = Database(net, './datasets/pitts30k_test.mat')
     train_set = Vlataset(train_database)
     test_set = Vlataset(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)
@@ -148,9 +216,12 @@ if __name__ == '__main__':
         test_loss, test_acc = test(test_loader, net, criterion)
 
         # Write metrics to Tensorboard
-        # writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
-        # writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
+        if use_tensorboard:
+            writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
+            writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
 
     print('Finished Training')
-    # writer.flush()
-    # writer.close()
+
+    if use_tensorboard:
+        writer.flush()
+        writer.close()

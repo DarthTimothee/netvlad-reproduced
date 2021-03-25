@@ -1,5 +1,6 @@
 import math
 import scipy.io
+from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
 
@@ -7,7 +8,8 @@ from cache import Cache
 
 
 class Database:
-    def __init__(self, database_url, net):
+    def __init__(self, net, database_url, dataset_url='G:/School/Deep Learning/data/'):
+        self.dataset_url = dataset_url
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
@@ -31,11 +33,11 @@ class Database:
         return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
     def query_to_tensor(self, query_id):
-        input_image = Image.open('G:/School/Deep Learning/data/' + self.query_name(query_id))
+        input_image = Image.open(self.dataset_url + self.query_name(query_id))
         return self.preprocess(input_image)
 
     def image_to_tensor(self, image_id):
-        input_image = Image.open('G:/School/Deep Learning/data/' + self.image_name(image_id))
+        input_image = Image.open(self.dataset_url + self.image_name(image_id))
         return self.preprocess(input_image)
 
     def query_position(self, query_id):
