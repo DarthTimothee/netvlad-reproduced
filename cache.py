@@ -26,5 +26,5 @@ class Cache:
                     image_id = i - self.database.num_queries
                     query_tensor = self.database.image_to_tensor(image_id).unsqueeze(0)
                     self.image_vlads[image_id] = self.net(query_tensor).detach().numpy()
-            self.net.unfreeze()
-            self.net.train()
+        self.net.unfreeze()
+        self.net.train()

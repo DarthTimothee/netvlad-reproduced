@@ -41,9 +41,6 @@ class Vlataset(Dataset):
                         for image_id in image_indices:
                             potential_positives.append(image_id)
 
-    def __vlad_distance(self, vlad1, vlad2):
-        return torch.sum(self.pairwise_distance(vlad1, vlad2)).detach().numpy()  # TODO: is this correct?
-
     def __distance_to_query(self, query_id, image_id):
         vlad1 = self.database.cache.query_vlads[query_id]
         vlad2 = self.database.cache.image_vlads[image_id]
