@@ -1,6 +1,8 @@
 import math
 import random
 from collections import defaultdict
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -43,9 +45,9 @@ class Vlataset(Dataset):
         return torch.sum(self.pairwise_distance(vlad1, vlad2)).detach().numpy()  # TODO: is this correct?
 
     def __distance_to_query(self, query_id, image_id):
-        vlad1 = torch.tensor(self.database.cache.query_vlads[query_id])
-        vlad2 = torch.tensor(self.database.cache.image_vlads[image_id])
-        return self.__vlad_distance(vlad1, vlad2)
+        vlad1 = self.database.cache.query_vlads[query_id]
+        vlad2 = self.database.cache.image_vlads[image_id]
+        return np.linalg.norm(vlad1 - vlad2)
 
     def __best_positive(self, query_id):
         sorted_positives = sorted(self.potential_positives[query_id],

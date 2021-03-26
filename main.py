@@ -167,7 +167,7 @@ if __name__ == '__main__':
     if use_tensorboard:
         writer = SummaryWriter()
 
-    timos_arme_laptopje = True
+    timos_arme_laptopje = False
     if timos_arme_laptopje:
         torch.set_num_threads(4)
 
