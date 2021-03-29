@@ -11,6 +11,7 @@ class NetVladCNN(torch.nn.Module):
         self.base_cnn = base_cnn
         self.c = torch.from_numpy(c)
         # self.c.unsqueeze_(0).unsqueeze_(-1)  # Add extra dimensions in-place (required for subtracting later
+        self.K = K
         self.D = base_cnn.get_output_dim()
         self.netvlad_layer = NetVladLayer(K=K, D=self.D)
 

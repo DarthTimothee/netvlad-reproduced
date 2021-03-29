@@ -49,7 +49,7 @@ class Vlataset(Dataset):
     def __best_positive(self, query_id):
         sorted_positives = sorted(self.potential_positives[query_id],
                                   key=lambda image_id: self.__distance_to_query(query_id, image_id))
-        return sorted_positives[0]
+        return sorted_positives[0]  # TODO: some queries don't have any positives?
 
     def __get_1000_negatives(self, query_id):
         negatives = list()

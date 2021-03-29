@@ -1,6 +1,5 @@
 
 CORRECT
-- clusters
 - whitening
 - fmax
 - vgg16 base network
@@ -11,7 +10,6 @@ OTHER
 - cache in batches
 - alle pre-processing in 1x doen (+ naar file schrijven?) -> met memmap
 - time performance
-- forward pass sneller maken
 - plotjes maken
     - k-of-n
     - alle stats bijhouden
