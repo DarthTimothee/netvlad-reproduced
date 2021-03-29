@@ -3,13 +3,16 @@ CORRECT
 - clusters
 - whitening
 - fmax
+- vgg16 base network
 
 OTHER
-- vgg16 base network
+- GPU
 - cache RAM proof maken (naar file schrijven; memmap)
-- alle pre-processing in 1x doen (+ naar file schrijven?)
+- cache in batches
+- alle pre-processing in 1x doen (+ naar file schrijven?) -> met memmap
 - time performance
 - forward pass sneller maken
 - plotjes maken
     - k-of-n
     - alle stats bijhouden
+- poster / blog post
