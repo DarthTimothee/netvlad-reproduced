@@ -8,7 +8,7 @@ from cache import Cache
 
 
 class Database:
-    def __init__(self, net, database_url, dataset_url='G:/School/Deep Learning/data/'):
+    def __init__(self, database_url, dataset_url='G:/School/Deep Learning/data/'):
         self.dataset_url = dataset_url
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
@@ -23,10 +23,10 @@ class Database:
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             # TODO: keep these normalize constants?
         ])
-        self.cache = Cache(self, net)
+        self.cache = Cache(self)
 
-    def update_cache(self):
-        self.cache.update()
+    def update_cache(self, net):
+        self.cache.update(net)
 
     def geo_distance(self, query_id, image_id):
         x1, y1 = self.query_position(query_id)

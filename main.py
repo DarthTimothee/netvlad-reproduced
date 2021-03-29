@@ -10,6 +10,7 @@ from vlataset import Vlataset
 import numpy as np
 import os, psutil
 import gc
+from clusters import get_clusters
 
 use_torch_summary = False
 try:
@@ -163,7 +164,7 @@ def test(test_loader, net, criterion):
 
 if __name__ == '__main__':
     # Create a writer to write to Tensorboard
-    use_tensorboard = False
+    use_tensorboard = True
     if use_tensorboard:
         writer = SummaryWriter()
 
@@ -184,12 +185,6 @@ if __name__ == '__main__':
     base_network = AlexBase()
     D = base_network.get_output_dim()
 
-    c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
-    net = NetVladCNN(base_cnn=base_network, K=K, c=c)
-
-    if use_torch_summary:
-        summary(net, (3, 480, 640))
-
     # Create loss function and optimizer
     pairwise_distance = nn.PairwiseDistance()
     criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum')
@@ -197,22 +192,30 @@ if __name__ == '__main__':
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
 
-    optimizer = optim.SGD(net.parameters(), lr=5e-1)
-
-    train_database = Database(net, './datasets/pitts30k_train.mat')
-    test_database = Database(net, './datasets/pitts30k_test.mat')
+    train_database = Database('./datasets/pitts30k_train.mat', './data/')
+    test_database = Database('./datasets/pitts30k_test.mat', './data/')
     train_set = Vlataset(train_database)
     test_set = Vlataset(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
+    # c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
+    c = get_clusters(K, D, train_database, base_network)
+    assert c.shape == (K, D)
+
+    net = NetVladCNN(base_cnn=base_network, K=K, c=c)
+    optimizer = optim.SGD(net.parameters(), lr=5e-1)
+
+    if use_torch_summary:
+        summary(net, (3, 480, 640))
+
     for epoch in progress(range(epochs)):  # loop over the dataset multiple times
         # Train on data
-        train_database.update_cache()
+        train_database.update_cache(net)
         train_loss, train_acc = train(train_loader, net, optimizer, criterion)
 
         # Test on data
-        test_database.update_cache()
+        test_database.update_cache(net)
         test_loss, test_acc = test(test_loader, net, criterion)
 
         # Write metrics to Tensorboard
