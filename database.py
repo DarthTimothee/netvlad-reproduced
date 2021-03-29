@@ -1,8 +1,14 @@
 import math
+import os.path as path
+from tempfile import mkdtemp
+
+import numpy as np
 import scipy.io
-from torch.utils.data import Dataset
-from torchvision import transforms
+import torch
 from PIL import Image
+from colorama import Fore
+from torchvision import transforms
+from tqdm import trange
 
 from cache import Cache
 
@@ -13,8 +19,8 @@ class Database:
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        self.num_queries = 100
-        self.num_images = 1100
+        #self.num_queries = 100
+        #self.num_images = 1100
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(100),  # TODO: resize/crop?
@@ -25,6 +31,24 @@ class Database:
         ])
         self.cache = Cache(self)
 
+        query_filename = path.join(mkdtemp(), "query_tensors.dat")
+        self.query_tensors = np.memmap(query_filename, dtype="float32", mode="w+",
+                                       shape=(self.num_queries, *self.query_to_tensor2(0).shape))
+        image_filename = path.join(mkdtemp(), "image_tensors.dat")
+        self.image_tensors = np.memmap(image_filename, dtype="float32", mode="w+",
+                                       shape=(self.num_images, *self.image_to_tensor2(0).shape))
+
+        with trange(self.num_queries + self.num_images, position=0,
+                    leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.WHITE, Fore.WHITE)) as t:
+            t.set_description("Processing images\t\t")
+            for i in t:
+                if i < self.num_queries:
+                    query_id = i
+                    self.query_tensors[query_id] = self.query_to_tensor2(query_id).detach().numpy()
+                else:
+                    image_id = i - self.num_queries
+                    self.image_tensors[image_id] = self.image_to_tensor2(image_id).detach().numpy()
+
     def update_cache(self, net):
         self.cache.update(net)
 
@@ -33,13 +57,19 @@ class Database:
         x2, y2 = self.image_position(image_id)
         return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def query_to_tensor(self, query_id):
+    def query_to_tensor2(self, query_id):
         input_image = Image.open(self.dataset_url + self.query_name(query_id))
         return self.preprocess(input_image)
 
-    def image_to_tensor(self, image_id):
+    def query_to_tensor(self, query_id):
+        return torch.from_numpy(self.query_tensors[query_id])
+
+    def image_to_tensor2(self, image_id):
         input_image = Image.open(self.dataset_url + self.image_name(image_id))
         return self.preprocess(input_image)
+
+    def image_to_tensor(self, image_id):
+        return torch.from_numpy(self.image_tensors[image_id])
 
     def query_position(self, query_id):
         x = self.db.get('dbStruct')[0][0][4][0][query_id]

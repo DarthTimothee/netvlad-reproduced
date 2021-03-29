@@ -1,24 +1,29 @@
-import torch
-from tqdm.auto import trange
-from colorama import Fore
-from tempfile import mkdtemp
 import os.path as path
+from tempfile import mkdtemp
+
 import numpy as np
+import torch
+from colorama import Fore
+from tqdm.auto import trange
 
 
 class Cache:
     def __init__(self, database):
         self.database = database
         self.net = None
+        self.query_filename = path.join(mkdtemp(), "query_vlads.dat")
+        self.image_filename = path.join(mkdtemp(), "image_vlads.dat")
+        self.query_vlads = None
+        self.image_vlads = None
 
     def update(self, net):
         if not self.net:
             self.net = net
-            self.query_vlads = np.zeros((self.database.num_queries, net.D, net.K, 1))
-            self.image_vlads = np.zeros((self.database.num_images, net.D, net.K, 1))
 
-        # filename = path.join(mkdtemp(), "newfile.dat")
-        # fp = np.memmap(filename, dtype="float32", mode="w+", shape=self.query_vlads.shape)
+            self.query_vlads = np.memmap(self.query_filename, dtype="float32", mode="w+",
+                                         shape=(self.database.num_queries, net.D, net.K, 1))
+            self.image_vlads = np.memmap(self.image_filename, dtype="float32", mode="w+",
+                                         shape=(self.database.num_images, net.D, net.K, 1))
 
         net.freeze()
         net.eval()
@@ -39,3 +44,6 @@ class Cache:
                         self.image_vlads[image_id] = net(query_tensor).detach().numpy()
         net.unfreeze()
         net.train()
+
+        self.query_vlads.flush()
+        self.image_vlads.flush()

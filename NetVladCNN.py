@@ -1,18 +1,21 @@
+import faiss
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from colorama import Fore
+from tqdm import tqdm
 
 
 class NetVladCNN(torch.nn.Module):
 
-    def __init__(self, base_cnn, K, c):
+    def __init__(self, base_cnn, K):
         super(NetVladCNN, self).__init__()
 
         self.base_cnn = base_cnn
-        self.c = torch.from_numpy(c)
-        # self.c.unsqueeze_(0).unsqueeze_(-1)  # Add extra dimensions in-place (required for subtracting later
         self.K = K
         self.D = base_cnn.get_output_dim()
+        self.c = torch.zeros((self.K, self.D))
         self.netvlad_layer = NetVladLayer(K=K, D=self.D)
 
     def forward(self, x):
@@ -26,8 +29,22 @@ class NetVladCNN(torch.nn.Module):
         # feature_map is now a (D x N) tensor
         return self.netvlad_layer(feature_map, self.c)
 
-    def set_clusters(self, c):
-        self.c = torch.from_numpy(c)
+    def init_clusters(self, database, N=25, num_samples=1000):  # TODO: don't hardcode N=25
+        ids = np.random.randint(low=0, high=database.num_images, size=num_samples)
+
+        features = np.zeros((num_samples * N, self.D)).astype('float32')
+        # TODO: batches
+        with tqdm(ids, position=0,
+                  leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.YELLOW)) as t:
+            t.set_description("Calculating cluster centers\t")
+            for i, v in enumerate(t):
+                features[i * N:(i + 1) * N] = self.base_cnn(database.image_to_tensor(v).unsqueeze(0)).reshape(
+                    self.D, N).T
+
+        model = faiss.Kmeans(self.D, self.K, verbose=False)
+        model.train(features)
+
+        self.c = torch.from_numpy(model.centroids)
 
     def freeze(self):
         self.netvlad_layer.freeze()

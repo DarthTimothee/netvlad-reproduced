@@ -1,17 +1,18 @@
+import gc
+import os
+import psutil
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader, TensorDataset
-from tqdm import tqdm as progress
 from colorama import Fore
+# from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
+from tqdm import tqdm as progress
+
 from NetVladCNN import NetVladCNN, AlexBase
 from database import Database
 from vlataset import Vlataset
-import numpy as np
-import os, psutil
-import gc
-from clusters import get_clusters
 
 use_torch_summary = False
 try:
@@ -66,7 +67,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
 
     # iterate through batches
     with progress(train_loader, position=0,
-              leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
+                  leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
         t.set_description("Training epoch " + str(epoch) + "\t\t\t")
         for training_tuple in t:
             # print(f"===== batch {i + 1} / {len(train_loader)} =====")
@@ -206,15 +207,13 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_set, batch_size=batch_size)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
-    # c = np.zeros((K, D))  # TODO: get actual c (parameter) used zeros for now
-    c = get_clusters(K, D, train_database, base_network)
-    assert c.shape == (K, D)
-
-    net = NetVladCNN(base_cnn=base_network, K=K, c=c)
+    net = NetVladCNN(base_cnn=base_network, K=K)
     optimizer = optim.SGD(net.parameters(), lr=5e-1)
 
     if use_torch_summary:
         summary(net, (3, 480, 640))
+
+    net.init_clusters(train_database, num_samples=100)  # TODO: don't forget to change num_samples back!
 
     for epoch in range(epochs):  # loop over the dataset multiple times
         # Train on data
