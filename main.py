@@ -66,7 +66,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
 
     # iterate through batches
     with progress(train_loader, position=0,
-              leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.CYAN, Fore.CYAN)) as t:
+              leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
         t.set_description("Training epoch " + str(epoch) + "\t\t\t")
         for training_tuple in t:
             # print(f"===== batch {i + 1} / {len(train_loader)} =====")
@@ -144,7 +144,7 @@ def test(epoch, test_loader, net, criterion):
     with torch.no_grad():
         # iterate through batches
         with progress(test_loader, position=0,
-                      leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
+                      leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.CYAN, Fore.CYAN)) as t:
             t.set_description("Testing epoch " + str(epoch) + "\t\t\t\t")
             for training_tuple in t:
                 # print(f"===== batch {i + 1} / {len(train_loader)} =====")
