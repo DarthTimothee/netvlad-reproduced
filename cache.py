@@ -16,7 +16,7 @@ class Cache:
         self.query_vlads = None
         self.image_vlads = None
 
-    def update(self, net, t_parent=None, cache_batch_size=4):
+    def update(self, net, t_parent=None, cache_batch_size=42):
         if not self.net:
             self.net = net
 
@@ -44,7 +44,7 @@ class Cache:
                 for image_id in range(0, n_images, cache_batch_size):
                     i_tensors = self.database.image_to_tensor_batch(image_id, batch_size=cache_batch_size)
                     i_vlads = net(i_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
-                    self.image_vlads[image_id:image_id + q_vlads.shape[0]] = i_vlads
+                    self.image_vlads[image_id:image_id + i_vlads.shape[0]] = i_vlads
                     t_parent.set_postfix(updating_cache=f"{round(((n_queries + image_id) / total) * 100)}%")
 
             else:
