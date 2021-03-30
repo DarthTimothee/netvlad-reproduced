@@ -118,7 +118,7 @@ def test(epoch, test_loader, criterion):
     with torch.no_grad():
         # iterate through batches
         with progress(test_loader, position=0,
-                      leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
+                      leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.CYAN, Fore.CYAN)) as t:
             t.set_description(f'{"Testing epoch " + str(epoch) : <32}')
             t.set_postfix(ram_usage=ram_usage())
             for training_tuple in t:
