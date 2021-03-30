@@ -100,7 +100,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
     return total_loss / len(train_loader)
 
 
-def test(epoch, test_loader, criterion):
+def test(epoch, test_loader, net, criterion):
     """
     Evaluates network in batches.
 
@@ -198,7 +198,7 @@ if __name__ == '__main__':
 
         # Test on data
         test_database.update_cache(net)
-        test_loss = test(epoch, test_loader, criterion)
+        test_loss = test(epoch, test_loader, net, criterion)
 
         # Write metrics to Tensorboard
         if use_tensorboard:
