@@ -19,8 +19,8 @@ class Database:
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        #self.num_queries = 100
-        #self.num_images = 1100
+        # self.num_queries = 100
+        # self.num_images = 1100
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(100),  # TODO: resize/crop?
@@ -31,23 +31,30 @@ class Database:
         ])
         self.cache = Cache(self)
 
-        query_filename = path.join(mkdtemp(), "query_tensors.dat")
-        self.query_tensors = np.memmap(query_filename, dtype="float32", mode="w+",
+        query_filename = path.join("./preprocessing", database_url.split("/")[-1].split(".")[0] + "_query_tensors.dat")
+        image_filename = path.join("./preprocessing", database_url.split("/")[-1].split(".")[0] + "_image_tensors.dat")
+
+        exists = path.exists(query_filename)
+        mode = "r" if exists else "w+"
+
+        self.query_tensors = np.memmap(query_filename, dtype="float32", mode=mode,
                                        shape=(self.num_queries, *self.query_to_tensor2(0).shape))
-        image_filename = path.join(mkdtemp(), "image_tensors.dat")
-        self.image_tensors = np.memmap(image_filename, dtype="float32", mode="w+",
+        self.image_tensors = np.memmap(image_filename, dtype="float32", mode=mode,
                                        shape=(self.num_images, *self.image_to_tensor2(0).shape))
 
-        with trange(self.num_queries + self.num_images, position=0,
-                    leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.WHITE, Fore.WHITE)) as t:
-            t.set_description("Processing images\t\t")
-            for i in t:
-                if i < self.num_queries:
-                    query_id = i
-                    self.query_tensors[query_id] = self.query_to_tensor2(query_id).detach().numpy()
-                else:
-                    image_id = i - self.num_queries
-                    self.image_tensors[image_id] = self.image_to_tensor2(image_id).detach().numpy()
+        if not exists:
+            with trange(self.num_queries + self.num_images, position=0,
+                        leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.WHITE, Fore.WHITE)) as t:
+                t.set_description(f"Processing {database_url.split('/')[-1]}\t")
+                for i in t:
+                    if i < self.num_queries:
+                        query_id = i
+                        self.query_tensors[query_id] = self.query_to_tensor2(query_id).detach().numpy()
+                    else:
+                        image_id = i - self.num_queries
+                        self.image_tensors[image_id] = self.image_to_tensor2(image_id).detach().numpy()
+        else:
+            print("Using preprocessed", database_url.split("/")[-1].split(".")[0])
 
     def update_cache(self, net):
         self.cache.update(net)

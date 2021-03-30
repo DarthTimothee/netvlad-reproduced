@@ -203,7 +203,7 @@ if __name__ == '__main__':
     momentum = 0.9
     wd = 0.001
     batch_size = 4  # TODO: batch size is 4 tuples
-    epochs = 2  # TODO: 32 but usually convergence occurs much faster
+    epochs = 30  # TODO: 32 but usually convergence occurs much faster
 
     # Create instance of Network
     base_network = AlexBase()
@@ -216,6 +216,16 @@ if __name__ == '__main__':
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
 
+    net = NetVladCNN(base_cnn=base_network, K=K)
+    path = None  # TODO
+    if path:
+        net.load_state_dict(torch.load(path))
+
+    optimizer = optim.SGD(net.parameters(), lr=5e-1)
+
+    if use_torch_summary:
+        summary(net, (3, 480, 640))
+
     train_database = Database('./datasets/pitts30k_train.mat')  # , dataset_url='./data/')
     test_database = Database('./datasets/pitts30k_test.mat')  # , dataset_url='./data/')
     train_set = Vlataset(train_database)
@@ -223,16 +233,10 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_set, batch_size=batch_size)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
-    net = NetVladCNN(base_cnn=base_network, K=K)
-    optimizer = optim.SGD(net.parameters(), lr=5e-1)
-
-    if use_torch_summary:
-        summary(net, (3, 480, 640))
-
     # if use_tensorboard:
     #     writer.add_graph(net, train_set[0])
 
-    net.init_clusters(train_database, num_samples=100)  # TODO: don't forget to change num_samples back!
+    net.init_clusters(train_database, num_samples=1000)  # TODO: don't forget to change num_samples back!
     train_database.update_cache(net)
     test_database.update_cache(net)
 
@@ -245,14 +249,20 @@ if __name__ == '__main__':
 
         # Train on data
         train_loss, train_acc = train(epoch, train_loader, net, optimizer, criterion)
+        print("train_loss:", train_loss)
+        print("train_acc:", train_acc)
 
         # Test on data
         test_loss, test_acc = test(epoch, test_loader, net, criterion)
+        print("test_loss:", train_loss)
+        print("test_acc:", test_acc)
 
         # Write metrics to Tensorboard
         if use_tensorboard:
             writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
             writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
+
+        torch.save(net.state_dict(), "./net-" + str(epoch))
 
     print('Finished Training')
 
