@@ -31,8 +31,11 @@ class Database:
         ])
         self.cache = Cache(self)
 
-        query_filename = path.join("./preprocessing", database_url.split("/")[-1].split(".")[0] + "_query_tensors.dat")
-        image_filename = path.join("./preprocessing", database_url.split("/")[-1].split(".")[0] + "_image_tensors.dat")
+        # TODO: Comments
+        query_filename = path.join("./preprocessing",
+                                   f"{database_url.split('/')[-1].split('.')[0]}_{self.num_queries}_query_tensors.dat")
+        image_filename = path.join("./preprocessing",
+                                   f"{database_url.split('/')[-1].split('.')[0]}_{self.num_images}_image_tensors.dat")
 
         exists = path.exists(query_filename)
         mode = "r" if exists else "w+"
