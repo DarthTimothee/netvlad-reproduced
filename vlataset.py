@@ -89,7 +89,7 @@ class VlataTest(Vlataset):
     def __getitem__(self, query_id):
         best_positive = self._best_positive(query_id)
         hard_negatives = self._hard_negatives(query_id)
-        q_vlad = self.database.cache.image_vlads[query_id]
+        q_vlad = self.database.cache.query_vlads[query_id]
         p_vlad = self.database.cache.image_vlads[best_positive]
         n_vlads = [self.database.cache.image_vlads[n] for n in hard_negatives]
         return q_vlad, p_vlad, n_vlads
