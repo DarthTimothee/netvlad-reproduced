@@ -12,7 +12,7 @@ from tqdm import tqdm as progress
 
 from NetVladCNN import NetVladCNN, AlexBase
 from database import Database
-from vlataset import Vlataset
+from vlataset import Vlataset, VlataTest
 
 use_torch_summary = False
 try:
@@ -66,13 +66,15 @@ def train(epoch, train_loader, net, optimizer, criterion):
     total_loss = 0
     global cache_lifetime
 
+    net.train()
+
     # iterate through batches
     with progress(train_loader, position=0,
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
         t.set_description(f'{"Training epoch " + str(epoch) : <32}')
         t.set_postfix(ram_usage=ram_usage())
         for training_tuple in t:
-            query_id, _, _, q_tensor, p_tensor, n_tensors = training_tuple
+            q_tensor, p_tensor, n_tensors = training_tuple
 
             if cache_lifetime > max_cache_lifetime:
                 train_loader.dataset.database.update_cache(net, t_parent=t)
@@ -98,7 +100,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
     return total_loss / len(train_loader)
 
 
-def test(epoch, test_loader, net, criterion):
+def test(epoch, test_loader, criterion):
     """
     Evaluates network in batches.
 
@@ -109,6 +111,9 @@ def test(epoch, test_loader, net, criterion):
     """
     total_loss = 0
 
+    net.eval()
+    net.freeze()
+
     # Use torch.no_grad to skip gradient calculation, not needed for evaluation
     with torch.no_grad():
         # iterate through batches
@@ -118,24 +123,17 @@ def test(epoch, test_loader, net, criterion):
             t.set_postfix(ram_usage=ram_usage())
             for training_tuple in t:
 
-                query_id, best_positive, hard_negatives, _, _, _ = training_tuple
-
-                # forward pass
-                # outputs = net(input_image)
-                outputs = test_database.query_to_tensor(query_id)
-
-                # best_positive_vlad = net(best_positive)
-                best_positive_vlad = test_database.image_to_tensor(best_positive)
+                q_vlad, p_vlad, n_vlads = training_tuple
                 loss = torch.zeros(1)
-                for image_id in hard_negatives:
-                    # n_vlad = net(n)
-                    n_vlad = test_database.image_to_tensor(image_id)
-                    loss += criterion(outputs, best_positive_vlad, n_vlad)
+
+                for n_vlad in n_vlads:
+                    loss += criterion(q_vlad, p_vlad, n_vlad)
 
                 total_loss += loss.detach().numpy()
 
                 t.set_postfix(ram_usage=ram_usage(), total_loss=total_loss)
 
+    net.unfreeze()
     return total_loss / len(test_loader)
 
 
@@ -178,7 +176,7 @@ if __name__ == '__main__':
     train_database = Database('./datasets/pitts30k_train.mat')  # , dataset_url='./data/')
     test_database = Database('./datasets/pitts30k_test.mat')  # , dataset_url='./data/')
     train_set = Vlataset(train_database)
-    test_set = Vlataset(test_database)
+    test_set = VlataTest(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
@@ -200,7 +198,7 @@ if __name__ == '__main__':
 
         # Test on data
         test_database.update_cache(net)
-        test_loss = test(epoch, test_loader, net, criterion)
+        test_loss = test(epoch, test_loader, criterion)
 
         # Write metrics to Tensorboard
         if use_tensorboard:

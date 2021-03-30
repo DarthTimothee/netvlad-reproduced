@@ -46,7 +46,7 @@ class Vlataset(Dataset):
         vlad2 = self.database.cache.image_vlads[image_id]
         return np.linalg.norm(vlad1 - vlad2)
 
-    def __best_positive(self, query_id):
+    def _best_positive(self, query_id):
         sorted_positives = sorted(self.potential_positives[query_id],
                                   key=lambda image_id: self.__distance_to_query(query_id, image_id))
         return sorted_positives[0]  # TODO: some queries don't have any positives?
@@ -61,7 +61,7 @@ class Vlataset(Dataset):
                 negatives.append(image_id)
         return negatives
 
-    def __hard_negatives(self, query_id):
+    def _hard_negatives(self, query_id):
         all_negatives = self.__get_1000_negatives(query_id) + self.previous_hard_negatives[query_id]
         sampled_negatives = sorted(all_negatives,
                                    key=lambda image_id: self.__distance_to_query(query_id, image_id))
@@ -70,12 +70,26 @@ class Vlataset(Dataset):
         return hard_negatives
 
     def __getitem__(self, query_id):
-        best_positive = self.__best_positive(query_id)
-        hard_negatives = self.__hard_negatives(query_id)
+        best_positive = self._best_positive(query_id)
+        hard_negatives = self._hard_negatives(query_id)
         query_tensor = self.database.query_to_tensor(query_id)
         positive_tensor = self.database.image_to_tensor(best_positive)
         negative_tensors = [self.database.image_to_tensor(n) for n in hard_negatives]
-        return query_id, best_positive, hard_negatives, query_tensor, positive_tensor, negative_tensors
+        return query_tensor, positive_tensor, negative_tensors
 
     def __len__(self):
         return self.database.num_queries
+
+
+class VlataTest(Vlataset):
+
+    def __init__(self, database):
+        super().__init__(database)
+
+    def __getitem__(self, query_id):
+        best_positive = self._best_positive(query_id)
+        hard_negatives = self._hard_negatives(query_id)
+        q_vlad = self.database.cache.image_vlads[query_id]
+        p_vlad = self.database.cache.image_vlads[best_positive]
+        n_vlads = [self.database.cache.image_vlads[n] for n in hard_negatives]
+        return q_vlad, p_vlad, n_vlads
