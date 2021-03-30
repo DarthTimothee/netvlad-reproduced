@@ -3,6 +3,7 @@ CORRECT
 - whitening
 - fmax
 - vgg16 base network
+- train last layer of base network
 
 OTHER
 - GPU
