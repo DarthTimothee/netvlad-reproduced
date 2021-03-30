@@ -4,7 +4,7 @@ from tempfile import mkdtemp
 import numpy as np
 import torch
 from colorama import Fore
-from tqdm.auto import trange
+from tqdm.auto import tqdm
 
 
 class Cache:
@@ -16,7 +16,7 @@ class Cache:
         self.query_vlads = None
         self.image_vlads = None
 
-    def update(self, net, t_parent=None):
+    def update(self, net, t_parent=None, cache_batch_size=4):
         if not self.net:
             self.net = net
 
@@ -27,33 +27,48 @@ class Cache:
 
         net.freeze()
         net.eval()
-        # TODO: make cache in batches
+
+        n_images = self.database.num_images
+        n_queries = self.database.num_queries
+        total = n_queries + n_images
+
         with torch.no_grad():
 
             if t_parent:
-                total = self.database.num_queries + self.database.num_images
-                for query_id in range(self.database.num_queries):
-                    query_tensor = self.database.query_to_tensor(query_id).unsqueeze(0)
-                    self.query_vlads[query_id] = net(query_tensor).detach().numpy()
+                for query_id in range(0, n_queries, cache_batch_size):
+                    q_tensors = self.database.query_to_tensor_batch(query_id, batch_size=cache_batch_size)
+                    q_vlads = net(q_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
+                    self.query_vlads[query_id:query_id + q_vlads.shape[0]] = q_vlads
                     t_parent.set_postfix(updating_cache=f"{round((query_id / total) * 100)}%")
-                for image_id in range(self.database.num_images):
-                    query_tensor = self.database.image_to_tensor(image_id).unsqueeze(0)
-                    self.image_vlads[image_id] = net(query_tensor).detach().numpy()
-                    t_parent.set_postfix(
-                        updating_cache=f"{round(((self.database.num_queries + image_id) / total) * 100)}%")
+
+                for image_id in range(0, n_images, cache_batch_size):
+                    i_tensors = self.database.image_to_tensor_batch(image_id, batch_size=cache_batch_size)
+                    i_vlads = net(i_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
+                    self.image_vlads[image_id:image_id + q_vlads.shape[0]] = i_vlads
+                    t_parent.set_postfix(updating_cache=f"{round(((n_queries + image_id) / total) * 100)}%")
+
             else:
-                with trange(self.database.num_queries + self.database.num_images, position=0,
-                            leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.MAGENTA, Fore.MAGENTA)) as t:
-                    t.set_description(f'{"Building the cache" : <32}')
-                    for i in t:
-                        if i < self.database.num_queries:
-                            query_id = i
-                            query_tensor = self.database.query_to_tensor(query_id).unsqueeze(0)
-                            self.query_vlads[query_id] = net(query_tensor).detach().numpy()
-                        else:
-                            image_id = i - self.database.num_queries
-                            query_tensor = self.database.image_to_tensor(image_id).unsqueeze(0)
-                            self.image_vlads[image_id] = net(query_tensor).detach().numpy()
+                bar_format = "{l_bar}%s{bar}%s{r_bar}" % (Fore.MAGENTA, Fore.MAGENTA)
+                progress = tqdm(total=total, position=0, leave=True, bar_format=bar_format)
+                progress.set_description(f'{"Building the cache" : <32}')
+                for query_id in range(0, n_queries, cache_batch_size):
+                    q_tensors = self.database.query_to_tensor_batch(query_id, cache_batch_size)
+                    q_vlads = net(q_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
+                    self.query_vlads[query_id:query_id + q_vlads.shape[0]] = q_vlads
+                    progress.update(cache_batch_size)
+
+                for image_id in range(0, n_images, cache_batch_size):
+                    i_tensors = self.database.image_to_tensor_batch(image_id, cache_batch_size)
+                    i_vlads = net(i_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
+                    self.image_vlads[image_id:image_id + i_vlads.shape[0]] = i_vlads
+                    progress.update(cache_batch_size)
+
+                # TODO: fix bar (below is the old one)
+                # with trange(self.database.num_queries + self.database.num_images, position=0,
+                #             leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.MAGENTA, Fore.MAGENTA)) as t:
+                #     t.set_description(f'{"Building the cache" : <32}')
+                #     for i in t:
+
             net.unfreeze()
             net.train()
 

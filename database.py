@@ -74,12 +74,20 @@ class Database:
     def query_to_tensor(self, query_id):
         return torch.as_tensor(self.query_tensors[query_id])
 
+    def query_to_tensor_batch(self, query_id, batch_size=1):
+        end = min(query_id + batch_size, len(self.query_tensors))
+        return torch.as_tensor(self.query_tensors[query_id:end])
+
     def image_to_tensor2(self, image_id):
         input_image = Image.open(self.dataset_url + self.image_name(image_id))
         return self.preprocess(input_image)
 
     def image_to_tensor(self, image_id):
         return torch.as_tensor(self.image_tensors[image_id])
+
+    def image_to_tensor_batch(self, image_id, batch_size=1):
+        end = min(image_id + batch_size, len(self.image_tensors))
+        return torch.as_tensor(self.image_tensors[image_id:end])
 
     def query_position(self, query_id):
         x = self.db.get('dbStruct')[0][0][4][0][query_id]
