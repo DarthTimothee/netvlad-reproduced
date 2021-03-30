@@ -1,8 +1,6 @@
 import math
 import os
 import os.path as path
-from tempfile import mkdtemp
-
 import numpy as np
 import scipy.io
 import torch
@@ -20,16 +18,15 @@ class Database:
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        #self.num_queries = 100
-        #self.num_images = 1100
+        # self.num_queries = 100
+        # self.num_images = 1100
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(100),  # TODO: resize/crop?
             transforms.CenterCrop(100),
             transforms.ToTensor(),
             # transforms.LinearTransformation(),  # TODO
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            # TODO: keep these normalize constants?
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # TODO
         ])
         self.cache = Cache(self)
 
@@ -40,20 +37,18 @@ class Database:
                                    f"{database_url.split('/')[-1].split('.')[0]}_{self.num_images}_image_tensors.dat")
 
         exists = path.exists(query_filename)
-        mode = "r" if exists else "w+"
-
         if not path.exists("preprocessing"):
             os.system("mkdir preprocessing")
 
-        self.query_tensors = np.memmap(query_filename, dtype="float32", mode=mode,
+        self.query_tensors = np.memmap(query_filename, dtype="float32", mode="w+",
                                        shape=(self.num_queries, *self.query_to_tensor2(0).shape))
-        self.image_tensors = np.memmap(image_filename, dtype="float32", mode=mode,
+        self.image_tensors = np.memmap(image_filename, dtype="float32", mode="w+",
                                        shape=(self.num_images, *self.image_to_tensor2(0).shape))
 
         if not exists:
             with trange(self.num_queries + self.num_images, position=0,
                         leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.WHITE, Fore.WHITE)) as t:
-                t.set_description(f"Processing {database_url.split('/')[-1]}\t")
+                t.set_description(f'{"Processing" + str(database_url.split("/")[-1]) : <32}')
                 for i in t:
                     if i < self.num_queries:
                         query_id = i

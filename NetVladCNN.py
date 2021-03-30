@@ -36,7 +36,7 @@ class NetVladCNN(torch.nn.Module):
         # TODO: batches
         with tqdm(ids, position=0,
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.YELLOW)) as t:
-            t.set_description("Calculating cluster centers\t")
+            t.set_description(f'{"Calculating cluster centers" : <32}')
             for i, v in enumerate(t):
                 features[i * N:(i + 1) * N] = self.base_cnn(database.image_to_tensor(v).unsqueeze(0)).reshape(
                     self.D, N).T

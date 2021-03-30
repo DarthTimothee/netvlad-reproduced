@@ -44,7 +44,7 @@ class Cache:
             else:
                 with trange(self.database.num_queries + self.database.num_images, position=0,
                             leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.MAGENTA, Fore.MAGENTA)) as t:
-                    t.set_description("Building the cache\t\t\t")
+                    t.set_description(f'{"Building the cache" : <32}')
                     for i in t:
                         if i < self.database.num_queries:
                             query_id = i
