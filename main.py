@@ -1,5 +1,7 @@
 import gc
 import os
+import time
+
 import psutil
 
 import torch
@@ -69,7 +71,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
     net.train()
 
     # iterate through batches
-    with progress(train_loader, position=0,
+    with progress(train_loader, position=0, smoothing=0,
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
         t.set_description(f'{"Training epoch " + str(epoch) : <32}')
         t.set_postfix(ram_usage=ram_usage())
@@ -173,8 +175,8 @@ if __name__ == '__main__':
     if use_torch_summary:
         summary(net, (3, 480, 640))
 
-    train_database = Database('./datasets/pitts30k_train.mat')  # , dataset_url='./data/')
-    test_database = Database('./datasets/pitts30k_test.mat')  # , dataset_url='./data/')
+    train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/')
+    test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/')
     train_set = Vlataset(train_database)
     test_set = VlataTest(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)

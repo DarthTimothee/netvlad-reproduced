@@ -55,19 +55,15 @@ class Cache:
                     q_tensors = self.database.query_to_tensor_batch(query_id, cache_batch_size)
                     q_vlads = net(q_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
                     self.query_vlads[query_id:query_id + q_vlads.shape[0]] = q_vlads
-                    progress.update(cache_batch_size)
+                    progress.update(q_vlads.shape[0])
 
                 for image_id in range(0, n_images, cache_batch_size):
                     i_tensors = self.database.image_to_tensor_batch(image_id, cache_batch_size)
                     i_vlads = net(i_tensors).permute(2, 0, 1).unsqueeze(-1).detach().numpy()
                     self.image_vlads[image_id:image_id + i_vlads.shape[0]] = i_vlads
-                    progress.update(cache_batch_size)
+                    progress.update(i_vlads.shape[0])
 
-                # TODO: fix bar (below is the old one)
-                # with trange(self.database.num_queries + self.database.num_images, position=0,
-                #             leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.MAGENTA, Fore.MAGENTA)) as t:
-                #     t.set_description(f'{"Building the cache" : <32}')
-                #     for i in t:
+                progress.close()
 
             net.unfreeze()
             net.train()
