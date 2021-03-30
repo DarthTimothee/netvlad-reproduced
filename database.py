@@ -1,4 +1,5 @@
 import math
+import os
 import os.path as path
 from tempfile import mkdtemp
 
@@ -19,13 +20,14 @@ class Database:
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        # self.num_queries = 100
-        # self.num_images = 1100
+        #self.num_queries = 100
+        #self.num_images = 1100
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(100),  # TODO: resize/crop?
             transforms.CenterCrop(100),
             transforms.ToTensor(),
+            # transforms.LinearTransformation(),  # TODO
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             # TODO: keep these normalize constants?
         ])
@@ -39,6 +41,9 @@ class Database:
 
         exists = path.exists(query_filename)
         mode = "r" if exists else "w+"
+
+        if not path.exists("preprocessing"):
+            os.system("mkdir preprocessing")
 
         self.query_tensors = np.memmap(query_filename, dtype="float32", mode=mode,
                                        shape=(self.num_queries, *self.query_to_tensor2(0).shape))
@@ -59,8 +64,8 @@ class Database:
         else:
             print("Using preprocessed", database_url.split("/")[-1].split(".")[0])
 
-    def update_cache(self, net):
-        self.cache.update(net)
+    def update_cache(self, net, t_parent=None):
+        self.cache.update(net, t_parent=t_parent)
 
     def geo_distance(self, query_id, image_id):
         x1, y1 = self.query_position(query_id)
@@ -72,14 +77,14 @@ class Database:
         return self.preprocess(input_image)
 
     def query_to_tensor(self, query_id):
-        return torch.from_numpy(self.query_tensors[query_id])
+        return torch.as_tensor(self.query_tensors[query_id])
 
     def image_to_tensor2(self, image_id):
         input_image = Image.open(self.dataset_url + self.image_name(image_id))
         return self.preprocess(input_image)
 
     def image_to_tensor(self, image_id):
-        return torch.from_numpy(self.image_tensors[image_id])
+        return torch.as_tensor(self.image_tensors[image_id])
 
     def query_position(self, query_id):
         x = self.db.get('dbStruct')[0][0][4][0][query_id]

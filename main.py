@@ -33,7 +33,6 @@ except ImportError:
 process = psutil.Process(os.getpid())
 max_cache_lifetime = 1000
 cache_lifetime = 0
-test_cache_lifetime = 0
 
 
 def ram_usage():
@@ -74,18 +73,17 @@ def train(epoch, train_loader, net, optimizer, criterion):
     with progress(train_loader, position=0,
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
         t.set_description("Training epoch " + str(epoch) + "\t\t\t")
+        t.set_postfix(ram_usage=ram_usage())
         for training_tuple in t:
             # print(f"===== batch {i + 1} / {len(train_loader)} =====")
-            t.set_postfix(ram_usage=ram_usage())
 
             if cache_lifetime > max_cache_lifetime:
-                print()
-                train_loader.dataset.database.update_cache(net)
+                train_loader.dataset.database.update_cache(net, t_parent=t)
                 cache_lifetime = 0
 
             # current_tensors()
 
-            query_id, input_image, best_positive, hard_negatives = training_tuple
+            query_id, _, _, input_image, best_positive, hard_negatives = training_tuple
 
             # print(input_image.shape)
             # print(best_positive.shape)
@@ -128,10 +126,12 @@ def train(epoch, train_loader, net, optimizer, criterion):
 
             # TODO: keep track of k-of-n 'correct'
             # keep track of loss and accuracy
-            total_loss += loss
+            total_loss += loss.detach().numpy()
             # _, predicted = torch.max(outputs.data, 1)
             # total += labels.size(0)
             # correct += (predicted == labels).sum().item()
+
+            t.set_postfix(ram_usage=ram_usage(), total_loss=total_loss)
 
     return total_loss / len(train_loader), 0  # 100 * correct / total
 
@@ -145,8 +145,6 @@ def test(epoch, test_loader, net, criterion):
         net: Neural network model.
         criterion: Loss function (e.g. cross-entropy loss).
     """
-
-    global test_cache_lifetime
     total_loss = 0
     correct = 0
     total = 0
@@ -156,33 +154,35 @@ def test(epoch, test_loader, net, criterion):
         # iterate through batches
         with progress(test_loader, position=0,
                       leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.CYAN, Fore.CYAN)) as t:
-            t.set_description("Testing epoch " + str(epoch) + "\t\t\t\t")
+            if epoch >= 10:
+                t.set_description("Testing epoch " + str(epoch) + "\t\t\t")
+            else:
+                t.set_description("Testing epoch " + str(epoch) + "\t\t\t\t")
+            t.set_postfix(ram_usage=ram_usage())
             for training_tuple in t:
                 # print(f"===== batch {i + 1} / {len(train_loader)} =====")
-                t.set_postfix(ram_usage=ram_usage())
 
-                if test_cache_lifetime > max_cache_lifetime:
-                    print()
-                    test_loader.dataset.database.update_cache(net)
-                    test_cache_lifetime = 0
-
-                query_id, input_image, best_positive, hard_negatives = training_tuple
+                query_id, best_positive, hard_negatives, _, _, _ = training_tuple
 
                 # forward pass
-                outputs = net(input_image)
+                # outputs = net(input_image)
+                outputs = test_database.query_to_tensor(query_id)
 
-                best_positive_vlad = net(best_positive)
+                # best_positive_vlad = net(best_positive)
+                best_positive_vlad = test_database.image_to_tensor(best_positive)
                 loss = 0
-                for n in hard_negatives:
-                    n_vlad = net(n)
+                for image_id in hard_negatives:
+                    #n_vlad = net(n)
+                    n_vlad = test_database.image_to_tensor(image_id)
                     loss += criterion(outputs, best_positive_vlad, n_vlad)
 
                 # TODO: keep track of loss and accuracy
-                total_loss += loss
-                test_cache_lifetime += 4
+                total_loss += loss.detach().numpy()
                 # _, predicted = torch.max(outputs.data, 1)
                 # total += labels.size(0)
                 # correct += (predicted == labels).sum().item()
+
+                t.set_postfix(ram_usage=ram_usage(), total_loss=total_loss)
 
     return total_loss / len(test_loader), 0  # 100 * correct / total
 
@@ -238,7 +238,6 @@ if __name__ == '__main__':
 
     net.init_clusters(train_database, num_samples=1000)  # TODO: don't forget to change num_samples back!
     train_database.update_cache(net)
-    test_database.update_cache(net)
 
     for epoch in range(epochs):  # loop over the dataset multiple times
 
@@ -249,20 +248,17 @@ if __name__ == '__main__':
 
         # Train on data
         train_loss, train_acc = train(epoch, train_loader, net, optimizer, criterion)
-        print("train_loss:", train_loss)
-        print("train_acc:", train_acc)
 
         # Test on data
+        test_database.update_cache(net)
         test_loss, test_acc = test(epoch, test_loader, net, criterion)
-        print("test_loss:", train_loss)
-        print("test_acc:", test_acc)
 
         # Write metrics to Tensorboard
         if use_tensorboard:
             writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
             writer.add_scalars('Accuracy', {'Train': train_acc, 'Test': test_acc}, epoch)
 
-        torch.save(net.state_dict(), "./net-" + str(epoch))
+        torch.save(net.state_dict(), "./nets/net-" + str(epoch))
 
     print('Finished Training')
 
