@@ -6,9 +6,7 @@ CORRECT
 
 OTHER
 - GPU
-- cache RAM proof maken (naar file schrijven; memmap)
 - cache in batches
-- alle pre-processing in 1x doen (+ naar file schrijven?) -> met memmap
 - time performance
 - plotjes maken
     - k-of-n
