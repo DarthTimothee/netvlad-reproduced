@@ -31,6 +31,9 @@ except ImportError:
     pass
 
 process = psutil.Process(os.getpid())
+max_cache_lifetime = 1000
+cache_lifetime = 0
+test_cache_lifetime = 0
 
 
 def ram_usage():
@@ -65,6 +68,8 @@ def train(epoch, train_loader, net, optimizer, criterion):
     correct = 0
     total = 0
 
+    global cache_lifetime
+
     # iterate through batches
     with progress(train_loader, position=0,
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.BLUE)) as t:
@@ -72,6 +77,11 @@ def train(epoch, train_loader, net, optimizer, criterion):
         for training_tuple in t:
             # print(f"===== batch {i + 1} / {len(train_loader)} =====")
             t.set_postfix(ram_usage=ram_usage())
+
+            if cache_lifetime > max_cache_lifetime:
+                print()
+                train_loader.dataset.database.update_cache(net)
+                cache_lifetime = 0
 
             # current_tensors()
 
@@ -84,9 +94,6 @@ def train(epoch, train_loader, net, optimizer, criterion):
             # big_batch = torch.cat([input_image, best_positive, *hard_negatives])
             # net(big_batch)
             # continue
-
-            if use_tensorboard:
-                writer.add_graph(net, input_image)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -117,6 +124,8 @@ def train(epoch, train_loader, net, optimizer, criterion):
             loss.backward()
             optimizer.step()
 
+            cache_lifetime += batch_size
+
             # TODO: keep track of k-of-n 'correct'
             # keep track of loss and accuracy
             total_loss += loss
@@ -137,6 +146,7 @@ def test(epoch, test_loader, net, criterion):
         criterion: Loss function (e.g. cross-entropy loss).
     """
 
+    global test_cache_lifetime
     total_loss = 0
     correct = 0
     total = 0
@@ -151,6 +161,11 @@ def test(epoch, test_loader, net, criterion):
                 # print(f"===== batch {i + 1} / {len(train_loader)} =====")
                 t.set_postfix(ram_usage=ram_usage())
 
+                if test_cache_lifetime > max_cache_lifetime:
+                    print()
+                    test_loader.dataset.database.update_cache(net)
+                    test_cache_lifetime = 0
+
                 query_id, input_image, best_positive, hard_negatives = training_tuple
 
                 # forward pass
@@ -164,6 +179,7 @@ def test(epoch, test_loader, net, criterion):
 
                 # TODO: keep track of loss and accuracy
                 total_loss += loss
+                test_cache_lifetime += 4
                 # _, predicted = torch.max(outputs.data, 1)
                 # total += labels.size(0)
                 # correct += (predicted == labels).sum().item()
@@ -213,15 +229,24 @@ if __name__ == '__main__':
     if use_torch_summary:
         summary(net, (3, 480, 640))
 
+    # if use_tensorboard:
+    #     writer.add_graph(net, train_set[0])
+
     net.init_clusters(train_database, num_samples=100)  # TODO: don't forget to change num_samples back!
+    train_database.update_cache(net)
+    test_database.update_cache(net)
 
     for epoch in range(epochs):  # loop over the dataset multiple times
+
+        if epoch > 0 and epoch % 5 == 0:
+            max_cache_lifetime *= 2
+            lr /= 2.0
+            optimizer.learning_rate = lr
+
         # Train on data
-        train_database.update_cache(net)
         train_loss, train_acc = train(epoch, train_loader, net, optimizer, criterion)
 
         # Test on data
-        test_database.update_cache(net)
         test_loss, test_acc = test(epoch, test_loader, net, criterion)
 
         # Write metrics to Tensorboard
