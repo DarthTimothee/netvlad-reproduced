@@ -38,7 +38,8 @@ class Vlataset(Dataset):
                     for query_id in query_indices:
                         potential_positives = self.potential_positives[query_id]
                         for image_id in image_indices:
-                            potential_positives.append(image_id)
+                            if not self.database.query_name(query_id) == self.database.image_name(image_id):
+                                potential_positives.append(image_id)
 
     def __distance_to_query(self, query_id, image_id):
         vlad1 = self.database.cache.query_vlads[query_id]
