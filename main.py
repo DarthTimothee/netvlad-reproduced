@@ -1,9 +1,7 @@
 import gc
 import os
-import time
 
 import psutil
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,8 +10,9 @@ from colorama import Fore
 from torch.utils.data import DataLoader
 from tqdm import tqdm as progress
 
-from NetVladCNN import NetVladCNN, AlexBase, L2Norm, Reshape, VGG16
+from NetVladCNN import NetVladCNN, AlexBase, L2Norm, Reshape
 from database import Database
+from validation import validate
 from vlataset import Vlataset, VlataTest
 
 use_torch_summary = False
@@ -214,6 +213,7 @@ if __name__ == '__main__':
         # Test on data
         test_database.update_cache(net)
         test_loss = test(epoch, test_loader, net, criterion)
+        validate(net, test_database)
 
         # Write metrics to Tensorboard
         if use_tensorboard:

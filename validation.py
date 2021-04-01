@@ -3,40 +3,9 @@ from colorama import Fore
 from tqdm import tqdm
 
 
-def distance_to_query(database, query_id, image_id):
-    vlad1 = database.cache.query_vlads[query_id]
-    vlad2 = database.cache.image_vlads[image_id]
-    print()
-    print(query_id, image_id)
-    print(vlad1)
-    print("_________________")
-    print(vlad2)
-    print()
-    res = np.linalg.norm(vlad1 - vlad2)
-    print(res)
-    return res
-
-
 def nearest_images_to_query(database, query_id, num_nearest):
-    nearest_images = np.zeros(num_nearest, dtype=int)
-    distances = np.zeros(num_nearest)
-    for image_id in range(num_nearest):
-        distance = distance_to_query(database, query_id, image_id)
-        nearest_images[image_id] = image_id
-        distances[image_id] = distance
-
-    worst_distance_index = np.argmax(distances)
-    worst_distance = distances[worst_distance_index]
-    for image_id in range(num_nearest, database.num_images):
-        distance = distance_to_query(database, query_id, image_id)
-        if distance < worst_distance:
-            nearest_images[worst_distance_index] = image_id
-            distance[worst_distance_index] = distance
-            worst_distance_index = np.argmax(distances)
-            worst_distance = distances[worst_distance_index]
-
-    nearest_image_ids = [x for _, x in sorted(zip(distances, nearest_images))]
-    return nearest_image_ids
+    distances = np.linalg.norm(database.cache.image_vlads - database.cache.query_vlads[query_id], axis=1).squeeze()
+    return np.argpartition(distances, range(num_nearest))[:num_nearest]
 
 
 def validate(net, database):
@@ -51,19 +20,18 @@ def validate(net, database):
         t.set_description(f'{"Validating " : <32}')
 
         for query_id in t:
+            # Find the nearest VLAD vectors
             nearest_image_ids = nearest_images_to_query(database, query_id, all_n[-1])
-            corrects = [0] * len(nearest_image_ids)
-            print(nearest_image_ids)
-            for i, image_id in enumerate(nearest_image_ids):
-                distance = database.geo_distance(query_id, image_id)
-                if distance <= 25:
-                    corrects[i] = 1
             for i, n in enumerate(all_n):
-                total_correct[i] += sum(corrects[:n])
+                for image_id in nearest_image_ids[:n]:
+                    distance = database.geo_distance(query_id, image_id)
+                    if distance <= 25:
+                        total_correct[i] += 1
+                        break
 
         for i, n in enumerate(all_n):
-            total_correct[i] /= n
             total_correct[i] /= database.num_queries
             total_correct[i] *= 100
 
+        print()
         print(total_correct)
