@@ -33,13 +33,12 @@ class NetVladCNN(torch.nn.Module):
         ids = np.random.randint(low=0, high=database.num_images, size=num_samples)
 
         features = np.zeros((num_samples * N, self.D)).astype('float32')
-        # TODO: batches
         with tqdm(ids, position=0,
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.YELLOW)) as t:
             t.set_description(f'{"Calculating cluster centers" : <32}')
             for i, v in enumerate(t):
-                features[i * N:(i + 1) * N] = self.base_cnn(database.image_to_tensor(v).unsqueeze(0)).reshape(
-                    self.D, N).T
+                feature = self.base_cnn(database.image_to_tensor(v).unsqueeze(0)).detach().numpy()
+                features[i * N:(i + 1) * N] = feature.reshape(self.D, N).T
 
         model = faiss.Kmeans(self.D, self.K, verbose=False)
         model.train(features)
@@ -49,8 +48,14 @@ class NetVladCNN(torch.nn.Module):
     def freeze(self):
         self.netvlad_layer.freeze()
 
+        for param in self.base_cnn.features[-1].parameters():
+            param.requires_grad = False
+
     def unfreeze(self):
         self.netvlad_layer.unfreeze()
+
+        for param in self.base_cnn.features[-1].parameters():
+            param.requires_grad = True
 
 
 class NetVladLayer(nn.Module):
@@ -140,6 +145,9 @@ class AlexBase(nn.Module):
 
         for param in self.features.parameters():
             param.requires_grad = False
+
+        for param in self.features[-1].parameters():
+            param.requires_grad = True
 
     def forward(self, x):
         return self.features(x)
