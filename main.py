@@ -175,8 +175,13 @@ if __name__ == '__main__':
     if use_torch_summary:
         summary(net, (3, 480, 640))
 
-    train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/')
-    test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/')
+    try:
+        train_database = Database('./datasets/pitts30k_train.mat')
+        test_database = Database('./datasets/pitts30k_test.mat')
+    except:
+        train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/')
+        test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/')
+
     train_set = Vlataset(train_database)
     test_set = VlataTest(test_database)
     train_loader = DataLoader(train_set, batch_size=batch_size)
