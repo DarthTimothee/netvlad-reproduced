@@ -7,16 +7,37 @@ from colorama import Fore
 from tqdm import tqdm
 
 
+class Reshape(nn.Module):
+    def forward(self, input):
+        return input.squeeze().T.unsqueeze(1)
+
+
+class L2Norm(nn.Module):
+    def __init__(self, dim=1):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, input):
+        return F.normalize(input, p=2, dim=self.dim)
+
+
 class NetVladCNN(torch.nn.Module):
 
-    def __init__(self, base_cnn, K):
+    def __init__(self, base_cnn, pooling_layer=None, K=64):
         super(NetVladCNN, self).__init__()
 
         self.base_cnn = base_cnn
         self.K = K
         self.D = base_cnn.get_output_dim()
         self.c = torch.zeros((self.K, self.D))
-        self.netvlad_layer = NetVladLayer(K=K, D=self.D)
+
+        if not pooling_layer:
+            self.pooling = NetVladLayer(K=K, D=self.D)
+            self.pooling.set_clusters(self.c)
+            self.using_vlad = True
+        else:
+            self.pooling = pooling_layer
+            self.using_vlad = False
 
     def forward(self, x):
         """
@@ -27,7 +48,7 @@ class NetVladCNN(torch.nn.Module):
         """
         feature_map = self.base_cnn(x.cpu())
         # feature_map is now a (D x N) tensor
-        return self.netvlad_layer(feature_map, self.c)
+        return self.pooling(feature_map)
 
     def init_clusters(self, database, N=25, num_samples=1000):  # TODO: don't hardcode N=25
         ids = np.random.randint(low=0, high=database.num_images, size=num_samples)
@@ -44,15 +65,19 @@ class NetVladCNN(torch.nn.Module):
         model.train(features)
 
         self.c = torch.from_numpy(model.centroids)
+        if self.using_vlad:
+            self.pooling.set_clusters(self.c)
 
     def freeze(self):
-        self.netvlad_layer.freeze()
+        if self.using_vlad:
+            self.pooling.freeze()
 
         for param in self.base_cnn.features[-1].parameters():
             param.requires_grad = False
 
     def unfreeze(self):
-        self.netvlad_layer.unfreeze()
+        if self.using_vlad:
+            self.pooling.unfreeze()
 
         for param in self.base_cnn.features[-1].parameters():
             param.requires_grad = True
@@ -66,6 +91,10 @@ class NetVladLayer(nn.Module):
         self.D = D
         self.conv = nn.Conv2d(in_channels=D, out_channels=K, kernel_size=(1, 1), bias=bias)
         self.vlad_core = VladCore(K, D)
+        self.c = None
+
+    def set_clusters(self, c):
+        self.c = c
 
     def freeze(self):
         for param in self.conv.parameters():
@@ -75,7 +104,7 @@ class NetVladLayer(nn.Module):
         for param in self.conv.parameters():
             param.requires_grad = True
 
-    def forward(self, x, c):
+    def forward(self, x):
         """
         input: x <- (batch_size x D x H x W) map interpreted as N x D local descriptors x
         output:     (K x D) x batch_size, VLAD vectors
@@ -97,7 +126,7 @@ class NetVladLayer(nn.Module):
         a_bar = a_bar.view(batch_size, K, N)
 
         # VLAD vector
-        V = self.vlad_core(x, a_bar, c)
+        V = self.vlad_core(x, a_bar, self.c)
         assert V.shape == (D, K, batch_size)
 
         # TODO: double check the normalization here, because I don't trust it

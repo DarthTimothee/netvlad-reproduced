@@ -145,7 +145,6 @@ if __name__ == '__main__':
         writer = SummaryWriter()
 
     # Hyper parameters, based on the appendix
-    K = 64  # amount of kernels
     m = 0.1  # margin for the loss
     lr = 0.001  # or 0.0001 depending on the experiment, which is halved every 5 epochs
     momentum = 0.9
@@ -165,7 +164,16 @@ if __name__ == '__main__':
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
 
-    net = NetVladCNN(base_cnn=base_network, K=K)
+    using_vlad = False
+    if using_vlad:
+        pooling_layer = None
+        K = 64
+    else:
+        # TODO: over what dimension should we normalize in the L2Norm layer?
+        pooling_layer = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)), Reshape(), L2Norm())
+        K = 1
+
+    net = NetVladCNN(base_cnn=base_network, pooling_layer=pooling_layer, K=K)
     path = None  # TODO
     if path:
         net.load_state_dict(torch.load(path))
