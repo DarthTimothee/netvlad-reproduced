@@ -40,24 +40,33 @@ class Database:
         if not path.exists("preprocessing"):
             os.system("mkdir preprocessing")
 
-        self.query_tensors = np.memmap(query_filename, dtype="float32", mode="w+",
-                                       shape=(self.num_queries, *self.query_to_tensor2(0).shape))
-        self.image_tensors = np.memmap(image_filename, dtype="float32", mode="w+",
-                                       shape=(self.num_images, *self.image_to_tensor2(0).shape))
-
         if not exists:
+            self.query_tensors = np.memmap(query_filename, dtype="float32", mode="w+",
+                                           shape=(self.num_queries, *self.__query_tensor_from_image(0).shape))
+            self.image_tensors = np.memmap(image_filename, dtype="float32", mode="w+",
+                                           shape=(self.num_images, *self.__image_tensor_from_image(0).shape))
+
             with trange(self.num_queries + self.num_images, position=0,
                         leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.WHITE, Fore.WHITE)) as t:
-                t.set_description(f'{"Processing" + str(database_url.split("/")[-1]) : <32}')
+                t.set_description(f'{"Processing " + str(database_url.split("/")[-1]) : <32}')
                 for i in t:
                     if i < self.num_queries:
                         query_id = i
-                        self.query_tensors[query_id] = self.query_to_tensor2(query_id).detach().numpy()
+                        self.query_tensors[query_id] = self.__query_tensor_from_image(query_id).detach().numpy()
                     else:
                         image_id = i - self.num_queries
-                        self.image_tensors[image_id] = self.image_to_tensor2(image_id).detach().numpy()
+                        self.image_tensors[image_id] = self.__image_tensor_from_image(image_id).detach().numpy()
+
+            self.query_tensors.flush()
+            self.image_tensors.flush()
+
         else:
             print("Using preprocessed", database_url.split("/")[-1].split(".")[0])
+
+        self.query_tensors = np.memmap(query_filename, dtype="float32", mode="r",
+                                       shape=(self.num_queries, *self.__query_tensor_from_image(0).shape))
+        self.image_tensors = np.memmap(image_filename, dtype="float32", mode="r",
+                                       shape=(self.num_images, *self.__image_tensor_from_image(0).shape))
 
     def update_cache(self, net, t_parent=None):
         self.cache.update(net, t_parent=t_parent)
@@ -67,25 +76,25 @@ class Database:
         x2, y2 = self.image_position(image_id)
         return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-    def query_to_tensor2(self, query_id):
+    def __query_tensor_from_image(self, query_id):
         input_image = Image.open(self.dataset_url + self.query_name(query_id))
         return self.preprocess(input_image)
 
-    def query_to_tensor(self, query_id):
+    def query_tensor_from_stash(self, query_id):
         return torch.as_tensor(self.query_tensors[query_id])
 
-    def query_to_tensor_batch(self, query_id, batch_size=1):
+    def query_tensor_batch(self, query_id, batch_size=1):
         end = min(query_id + batch_size, len(self.query_tensors))
         return torch.as_tensor(self.query_tensors[query_id:end])
 
-    def image_to_tensor2(self, image_id):
+    def __image_tensor_from_image(self, image_id):
         input_image = Image.open(self.dataset_url + self.image_name(image_id))
         return self.preprocess(input_image)
 
-    def image_to_tensor(self, image_id):
+    def image_tensor_from_stash(self, image_id):
         return torch.as_tensor(self.image_tensors[image_id])
 
-    def image_to_tensor_batch(self, image_id, batch_size=1):
+    def image_tensor_batch(self, image_id, batch_size=1):
         end = min(image_id + batch_size, len(self.image_tensors))
         return torch.as_tensor(self.image_tensors[image_id:end])
 

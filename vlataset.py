@@ -72,9 +72,9 @@ class Vlataset(Dataset):
     def __getitem__(self, query_id):
         best_positive = self._best_positive(query_id)
         hard_negatives = self._hard_negatives(query_id)
-        query_tensor = self.database.query_to_tensor(query_id)
-        positive_tensor = self.database.image_to_tensor(best_positive)
-        negative_tensors = [self.database.image_to_tensor(n) for n in hard_negatives]
+        query_tensor = self.database.query_tensor_from_stash(query_id)
+        positive_tensor = self.database.image_tensor_from_stash(best_positive)
+        negative_tensors = [self.database.image_tensor_from_stash(n) for n in hard_negatives]
         return query_tensor, positive_tensor, negative_tensors
 
     def __len__(self):

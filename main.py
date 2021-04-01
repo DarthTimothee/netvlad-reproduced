@@ -12,7 +12,7 @@ from colorama import Fore
 from torch.utils.data import DataLoader
 from tqdm import tqdm as progress
 
-from NetVladCNN import NetVladCNN, AlexBase
+from NetVladCNN import NetVladCNN, AlexBase, L2Norm, Reshape, VGG16
 from database import Database
 from vlataset import Vlataset, VlataTest
 

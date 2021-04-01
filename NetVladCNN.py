@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 from colorama import Fore
 from tqdm import tqdm
 
@@ -58,7 +59,7 @@ class NetVladCNN(torch.nn.Module):
                   leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.YELLOW)) as t:
             t.set_description(f'{"Calculating cluster centers" : <32}')
             for i, v in enumerate(t):
-                feature = self.base_cnn(database.image_to_tensor(v).unsqueeze(0)).detach().numpy()
+                feature = self.base_cnn(database.image_tensor_from_stash(v).unsqueeze(0)).detach().numpy()
                 features[i * N:(i + 1) * N] = feature.reshape(self.D, N).T
 
         model = faiss.Kmeans(self.D, self.K, verbose=False)
@@ -169,7 +170,30 @@ class AlexBase(nn.Module):
         super(AlexBase, self).__init__()
 
         # Setup base network
-        self.full_cnn = torch.hub.load('pytorch/vision:v0.6.0', 'alexnet', pretrained=True)
+        self.full_cnn = models.alexnet(pretrained=True, progress=True)
+        self.features = self.full_cnn.features[:11]
+
+        for param in self.features.parameters():
+            param.requires_grad = False
+
+        for param in self.features[-1].parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        return self.features(x)
+
+    def get_output_dim(self):
+        return self.features[-1].out_channels  # TODO: klopt dit?
+
+
+class VGG16(nn.Module):
+
+    def __init__(self):
+        super(VGG16, self).__init__()
+
+        # Setup base network
+        # self.full_cnn = torch.hub.load('pytorch/vision:v0.6.0', 'alexnet', pretrained=True)
+        self.full_cnn = models.vgg16(pretrained=True, progress=True)
         self.features = self.full_cnn.features[:11]
 
         for param in self.features.parameters():
