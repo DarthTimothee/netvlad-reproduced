@@ -18,11 +18,9 @@ class Database:
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        self.num_queries //= 10
-        self.num_images //= 10
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
-            transforms.Resize(100),  # TODO: resize/crop?
+            transforms.Resize(100),  # TODO: resize images to 224x224
             transforms.CenterCrop(100),
             transforms.ToTensor(),
             # transforms.LinearTransformation(),  # TODO: PCA whitening
@@ -30,7 +28,6 @@ class Database:
         ])
         self.cache = Cache(self)
 
-        # TODO: Comments
         query_filename = path.join("./preprocessing",
                                    f"{database_url.split('/')[-1].split('.')[0]}_{self.num_queries}_query_tensors.dat")
         image_filename = path.join("./preprocessing",
