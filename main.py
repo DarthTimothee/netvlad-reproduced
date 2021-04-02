@@ -101,7 +101,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
             avg_loss = total_loss / total_count
             t.set_postfix(ram_usage=ram_usage(), loss=avg_loss)
 
-    return total_loss / len(train_loader)
+    return avg_loss
 
 
 def test(epoch, test_loader, net, criterion):
@@ -145,7 +145,7 @@ def test(epoch, test_loader, net, criterion):
     # Calculate recall@N accuracies
     accs = validate(net, test_database)
 
-    return total_loss / len(test_loader), accs
+    return avg_loss, accs
 
 
 if __name__ == '__main__':
