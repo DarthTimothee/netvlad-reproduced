@@ -1,36 +1,30 @@
 import numpy as np
 from colorama import Fore
-from tqdm import tqdm
+from annoy import AnnoyIndex
+from helpers import pbar
 
 
-def nearest_images_to_query(database, query_id, num_nearest):
-    distances = np.linalg.norm(database.cache.image_vlads - database.cache.query_vlads[query_id], axis=(1, 2)).squeeze()
-    return np.argsort(distances)[:num_nearest]
-
-
-def validate(net, database):
-
+def validate(net, database, n_trees=1000):
     all_n = [1, 2, 3, 4, 5, 10, 15, 20, 25]
-    total_correct = [0] * len(all_n)
+    total_correct = np.zeros(len(all_n))
 
-    with tqdm(range(database.num_queries), position=0,
-              leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.GREEN)) as t:
-        t.set_description(f'{"Validating " : <32}')
+    index = AnnoyIndex(net.K * net.D, "euclidean")
+    t = pbar(database.cache.image_vlads, color=Fore.GREEN, desc="Building index (for validation)")
+    for i, i_vlad in enumerate(t):
+        index.add_item(i, i_vlad.flatten())
+    index.build(n_trees)
 
-        for query_id in t:
-            # Find the nearest VLAD vectors
-            nearest_image_ids = nearest_images_to_query(database, query_id, all_n[-1])
-            for i, n in enumerate(all_n):
-                for image_id in nearest_image_ids[:n]:
-                    distance = database.geo_distance(query_id, image_id)
-                    if distance <= 25:
-                        total_correct[i] += 1
-                        break
+    t = pbar(range(database.num_queries), color=Fore.GREEN, desc="Validating")
+    for query_id in t:
+        # Find the nearest VLAD vectors using annoy index
+        nearest_image_ids = index.get_nns_by_vector(database.cache.query_vlads[query_id].flatten(), 25)
+        for i, n in enumerate(all_n):
+            distances = np.array([database.geo_distance(query_id, image_id) for image_id in nearest_image_ids[:n]])
+            if distances.min() <= 25:
+                total_correct[i] += 1
+            else:
+                break
 
-        for i in range(len(all_n)):
-            total_correct[i] /= database.num_queries
-            total_correct[i] *= 100
-
-        print()
-        print(total_correct)
-        return total_correct
+    total_correct = total_correct / database.num_queries * 100
+    t.set_postfix(accuracy=total_correct)
+    return total_correct

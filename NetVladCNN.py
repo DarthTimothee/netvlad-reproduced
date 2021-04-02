@@ -5,7 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 from colorama import Fore
-from tqdm import tqdm
+
+from helpers import pbar
 
 
 class Reshape(nn.Module):
@@ -55,9 +56,7 @@ class NetVladCNN(torch.nn.Module):
         ids = np.random.randint(low=0, high=database.num_images, size=num_samples)
 
         features = np.zeros((num_samples * N, self.D)).astype('float32')
-        with tqdm(ids, position=0,
-                  leave=True, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.YELLOW)) as t:
-            t.set_description(f'{"Calculating cluster centers" : <32}')
+        with pbar(ids, color=Fore.YELLOW, desc="Calculating cluster centers") as t:
             for i, v in enumerate(t):
                 feature = self.base_cnn(database.image_tensor_from_stash(v).unsqueeze(0)).detach().numpy()
                 features[i * N:(i + 1) * N] = feature.reshape(self.D, N).T
