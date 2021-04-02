@@ -35,3 +35,4 @@ def validate(net, database):
 
         print()
         print(total_correct)
+        return total_correct

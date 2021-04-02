@@ -1,12 +1,13 @@
 
-CORRECT
-- whitening
-- vgg16 base network
+NECESSARY
+- PCA-whitening
+- vgg16 base network (only train last 3 layers)
 
-OTHER
+SPEEDUP
 - GPU
-- time performance
-- plotjes maken
-    - k-of-n
-    - alle stats bijhouden
+- colab?
+- run on GCP
+
+FINALIZE
+- run experiments
 - poster / blog post

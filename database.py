@@ -25,8 +25,8 @@ class Database:
             transforms.Resize(100),  # TODO: resize/crop?
             transforms.CenterCrop(100),
             transforms.ToTensor(),
-            # transforms.LinearTransformation(),  # TODO
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # TODO
+            # transforms.LinearTransformation(),  # TODO: PCA whitening
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # TODO: use normalization?
         ])
         self.cache = Cache(self)
 

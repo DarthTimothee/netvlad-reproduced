@@ -51,7 +51,7 @@ class NetVladCNN(torch.nn.Module):
         # feature_map is now a (D x N) tensor
         return self.pooling(feature_map)
 
-    def init_clusters(self, database, N=25, num_samples=1000):  # TODO: don't hardcode N=25
+    def init_clusters(self, database, N, num_samples=1000):
         ids = np.random.randint(low=0, high=database.num_images, size=num_samples)
 
         features = np.zeros((num_samples * N, self.D)).astype('float32')
@@ -128,7 +128,7 @@ class NetVladLayer(nn.Module):
 
         # VLAD vector
         V = self.vlad_core(x, a_bar, self.c)
-        assert V.shape == (D, K, batch_size)
+        assert V.shape == (batch_size, K, D)
 
         # TODO: double check the normalization here, because I don't trust it
         # NOTE: intra_normalization should be column-wise. Assumed K are the columns here
@@ -152,8 +152,8 @@ class VladCore(nn.Module):
         """
         input:  x     <- (D x N)
                 a_bar <- (1 x K x H x W)  -> moet iig N en K hebben voor equation 1
-                c     <- TODO: I think c is also a parameter? what dimensions does it have?
-        output: V     <- (D x K) x batch_size
+                c     <- (K x D)
+        output: V     <- (batch_size x K x D)
         """
         K, D, N, batch_size = self.K, self.D, x.shape[2], x.shape[0]
         assert x.shape == (batch_size, D, N)
@@ -161,7 +161,7 @@ class VladCore(nn.Module):
 
         R = c * torch.sum(a_bar, dim=2).unsqueeze(-1)
         L = torch.bmm(a_bar, x.permute(0, 2, 1))
-        return (L + R).T
+        return L + R
 
 
 class AlexBase(nn.Module):

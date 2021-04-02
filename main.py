@@ -111,6 +111,7 @@ def test(epoch, test_loader, net, criterion):
         criterion: Loss function (e.g. cross-entropy loss).
     """
     total_loss = 0
+    test_database.update_cache(net)
 
     net.eval()
     net.freeze()
@@ -135,7 +136,11 @@ def test(epoch, test_loader, net, criterion):
                 t.set_postfix(ram_usage=ram_usage(), total_loss=total_loss)
 
     net.unfreeze()
-    return total_loss / len(test_loader)
+
+    # Calculate recall@N accuracies
+    accs = validate(net, test_database)
+
+    return total_loss / len(test_loader), accs
 
 
 if __name__ == '__main__':
@@ -153,6 +158,7 @@ if __name__ == '__main__':
     # torch.set_num_threads(4)
 
     # Create instance of Network
+    # base_network = VGG16()  # AlexBase()
     base_network = AlexBase()
     D = base_network.get_output_dim()
 
@@ -160,6 +166,7 @@ if __name__ == '__main__':
     pairwise_distance = nn.PairwiseDistance()
     criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum')
     # loss_function2 = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum')
+    # TODO: try with other loss function
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
 
@@ -169,15 +176,16 @@ if __name__ == '__main__':
         K = 64
     else:
         # TODO: over what dimension should we normalize in the L2Norm layer?
-        pooling_layer = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)), Reshape(), L2Norm())
+        # TODO: not 1x1 but other shape -> but what shape?
+        pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
         K = 1
 
     net = NetVladCNN(base_cnn=base_network, pooling_layer=pooling_layer, K=K)
-    path = None  # TODO
+    path = None  # TODO: import net from file
     if path:
         net.load_state_dict(torch.load(path))
 
-    optimizer = optim.SGD(net.parameters(), lr=5e-1)
+    optimizer = optim.SGD(net.parameters(), lr=lr)
 
     if use_torch_summary:
         summary(net, (3, 480, 640))
@@ -191,18 +199,25 @@ if __name__ == '__main__':
 
     train_set = Vlataset(train_database)
     test_set = VlataTest(test_database)
-    train_loader = DataLoader(train_set, batch_size=batch_size)
-    test_loader = DataLoader(test_set, batch_size=batch_size)
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=2)
+    test_loader = DataLoader(test_set, batch_size=batch_size, num_workers=2)
+
+    # Get the N by passing a random image from the dataset though the network
+    sample_out = base_network(train_database.query_tensor_from_stash(0).unsqueeze(0))
+    _, _, W, H = sample_out.shape
+    N = W * H
 
     # if use_tensorboard:
     #     writer.add_graph(net, train_set[0])
 
-    net.init_clusters(train_database, num_samples=1000)
+    net.init_clusters(train_database, N=N, num_samples=1000)
     train_database.update_cache(net)
 
-    for epoch in range(epochs):  # loop over the dataset multiple times
+    all_accuracies = []
 
-        if epoch > 0 and epoch % 5 == 0:
+    for epoch in range(1, epochs + 1):  # loop over the dataset multiple times
+
+        if epoch > 1 and epoch % 5 == 1:  # 1 because the epochs are 1-indexed
             max_cache_lifetime *= 2
             lr /= 2.0
             optimizer.learning_rate = lr
@@ -211,13 +226,14 @@ if __name__ == '__main__':
         train_loss = train(epoch, train_loader, net, optimizer, criterion)
 
         # Test on data
-        test_database.update_cache(net)
-        test_loss = test(epoch, test_loader, net, criterion)
-        validate(net, test_database)
+        test_loss, accuracies = test(epoch, test_loader, net, criterion)
+        all_accuracies.append(accuracies)
 
         # Write metrics to Tensorboard
         if use_tensorboard:
             writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
+            writer.add_scalars("Recall@N", {'2@N': accuracies[1], '5@N': accuracies[4], '10@N': accuracies[5], '25@N': accuracies[-1]}, epoch)
+            writer.flush()
 
         torch.save(net.state_dict(), "./nets/net-" + str(epoch))
 
