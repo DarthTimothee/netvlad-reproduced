@@ -18,8 +18,8 @@ class Database:
         self.db = scipy.io.loadmat(database_url)
         self.num_images = self.db.get('dbStruct')[0][0][5][0][0]
         self.num_queries = self.db.get('dbStruct')[0][0][6][0][0]
-        # self.num_queries = 100
-        # self.num_images = 1100
+        self.num_queries //= 10
+        self.num_images //= 10
         self.preprocess = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
             transforms.Resize(100),  # TODO: resize/crop?

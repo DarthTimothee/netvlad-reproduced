@@ -4,8 +4,8 @@ from tqdm import tqdm
 
 
 def nearest_images_to_query(database, query_id, num_nearest):
-    distances = np.linalg.norm(database.cache.image_vlads - database.cache.query_vlads[query_id], axis=1).squeeze()
-    return np.argpartition(distances, range(num_nearest))[:num_nearest]
+    distances = np.linalg.norm(database.cache.image_vlads - database.cache.query_vlads[query_id], axis=(1, 2)).squeeze()
+    return np.argsort(distances)[:num_nearest]
 
 
 def validate(net, database):
@@ -29,7 +29,7 @@ def validate(net, database):
                         total_correct[i] += 1
                         break
 
-        for i, n in enumerate(all_n):
+        for i in range(len(all_n)):
             total_correct[i] /= database.num_queries
             total_correct[i] *= 100
 

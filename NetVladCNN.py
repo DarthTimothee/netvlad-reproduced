@@ -32,13 +32,13 @@ class NetVladCNN(torch.nn.Module):
         self.D = base_cnn.get_output_dim()
         self.c = torch.zeros((self.K, self.D))
 
-        if not pooling_layer:
+        if pooling_layer:
+            self.pooling = pooling_layer
+            self.using_vlad = False
+        else:
             self.pooling = NetVladLayer(K=K, D=self.D)
             self.pooling.set_clusters(self.c)
             self.using_vlad = True
-        else:
-            self.pooling = pooling_layer
-            self.using_vlad = False
 
     def forward(self, x):
         """

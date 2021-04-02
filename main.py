@@ -163,7 +163,7 @@ if __name__ == '__main__':
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
 
-    using_vlad = False
+    using_vlad = True
     if using_vlad:
         pooling_layer = None
         K = 64
