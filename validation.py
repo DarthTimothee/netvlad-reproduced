@@ -9,8 +9,6 @@ def nearest_images_to_query(database, query_id, num_nearest):
 
 
 def validate(net, database):
-    # database = Database('./datasets/pitts30k_val.mat', dataset_url='./data/')
-    database.update_cache(net)
 
     all_n = [1, 2, 3, 4, 5, 10, 15, 20, 25]
     total_correct = [0] * len(all_n)

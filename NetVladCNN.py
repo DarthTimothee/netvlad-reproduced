@@ -70,6 +70,8 @@ class NetVladCNN(torch.nn.Module):
             self.pooling.set_clusters(self.c)
 
     def freeze(self):
+        self.eval()
+
         if self.using_vlad:
             self.pooling.freeze()
 
@@ -77,6 +79,8 @@ class NetVladCNN(torch.nn.Module):
             param.requires_grad = False
 
     def unfreeze(self):
+        self.train()
+
         if self.using_vlad:
             self.pooling.unfreeze()
 
@@ -183,7 +187,7 @@ class AlexBase(nn.Module):
         return self.features(x)
 
     def get_output_dim(self):
-        return self.features[-1].out_channels  # TODO: klopt dit?
+        return self.features[-1].out_channels
 
 
 class VGG16(nn.Module):
