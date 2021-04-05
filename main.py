@@ -1,9 +1,8 @@
-import torch
 from torch import nn, optim
-from colorama import Fore
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
-from torch.utils.data import DataLoader
+
 from NetVladCNN import NetVladCNN, AlexBase, L2Norm, Reshape
 from database import Database
 from helpers import *
@@ -80,7 +79,6 @@ def test(epoch, test_loader, net, criterion):
         t = pbar(test_loader, color=Fore.CYAN, desc=f"Testing epoch {epoch}")
         t.set_postfix(ram_usage=ram_usage())
         for q_vlad, p_vlad, n_vlads in t:
-
             loss = sum([criterion(q_vlad, p_vlad, n_vlad) for n_vlad in n_vlads])
 
             total_loss += loss.detach().numpy()
@@ -122,44 +120,48 @@ if __name__ == '__main__':
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
     # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
 
-    using_vlad = True
-    if using_vlad:
-        pooling_layer = None
-        K = 64
-    else:
-        # TODO: over what dimension should we normalize in the L2Norm layer?
-        # TODO: not 1x1 but other shape -> but what shape?
-        pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
-        K = 1
-
-    net = NetVladCNN(base_cnn=base_network, pooling_layer=pooling_layer, K=K)
-    path = None  # TODO: import net from file
-    if path:
-        net.load_state_dict(torch.load(path))
-
-    optimizer = optim.SGD(net.parameters(), lr=lr)
-
-    summary(net, (3, 480, 640))
-
+    # Create the databases + datasets + dataloaders
     try:
         train_database = Database('./datasets/pitts30k_train.mat')
         test_database = Database('./datasets/pitts30k_test.mat')
     except:
         train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/')
         test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/')
-
     train_set = Vlataset(train_database)
     test_set = VlataTest(test_database)
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=2)
-    test_loader = DataLoader(test_set, batch_size=batch_size, num_workers=2)
+    train_loader = DataLoader(train_set, batch_size=batch_size)
+    test_loader = DataLoader(test_set, batch_size=batch_size)
 
     # Get the N by passing a random image from the dataset though the network
     sample_out = base_network(train_database.query_tensor_from_stash(0).unsqueeze(0))
     _, _, W, H = sample_out.shape
     N = W * H
 
+    # Specify the type of pooling to use
+    using_vlad = False
+    if using_vlad:
+        pooling_layer = None
+        K = 64
+    else:
+        # TODO: over what dimension should we normalize in the L2Norm layer?
+        # TODO: not 1x1 but other shape -> but what shape?
+        #pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
+        #K = N
+        pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), Reshape(), L2Norm())
+        K = 1
+
+    # Create the full net
+    net = NetVladCNN(base_cnn=base_network, pooling_layer=pooling_layer, K=K)
+    path = None  # TODO: import net from file
+    if path:
+        net.load_state_dict(torch.load(path))
+    optimizer = optim.SGD(net.parameters(), lr=lr)
+
+    # Write the architecture of the net
+    summary(net, (3, 480, 640))
     writer.add_graph(net, train_database.query_tensor_from_stash(0).unsqueeze(0))
 
+    # Init the clusters and cache
     net.init_clusters(train_database, N=N, num_samples=1000)
     train_database.update_cache(net)
 

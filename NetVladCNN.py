@@ -11,7 +11,7 @@ from helpers import pbar
 
 class Reshape(nn.Module):
     def forward(self, input):
-        return input.squeeze().T.unsqueeze(1)
+        return input.view((input.shape[0], input.shape[1], input.shape[2] * input.shape[3])).permute(0, 2, 1)
 
 
 class L2Norm(nn.Module):
