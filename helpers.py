@@ -31,3 +31,13 @@ def current_tensors():
 
 def custom_distance(x1, x2):
     return torch.pairwise_distance(x1, x2) ** 2
+
+
+def write_accs(name, accs, writer, epoch):
+    writer.add_scalars(name,
+                       {'1@N': accs[0], '2@N': accs[1], '3@N': accs[2], '4@N': accs[3], '5@N': accs[4], '10@N': accs[5],
+                        '15@N': accs[6], '20@N': accs[7], '25@N': accs[-1]}, epoch)
+
+
+def write_loss(name, loss, writer, epoch):
+    writer.add_scalars("Loss", {name: loss}, epoch)

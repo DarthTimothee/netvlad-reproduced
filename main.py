@@ -170,22 +170,19 @@ if __name__ == '__main__':
             optimizer.learning_rate = lr
 
         # Train on data
-        train_loss, train_accs = train(epoch, train_loader, net, optimizer, criterion)
+        train_loss, accs = train(epoch, train_loader, net, optimizer, criterion)
+        print(f"Train loss: {train_loss}, Accuracy: {accs}")
+        write_accs("TrainRecall@N", accs, writer, epoch)
+        write_loss('Train', train_loss, writer, epoch)
+        writer.flush()
 
         # Calculate loss and recall@N accuracies with test set  TODO: validation set
-        test_loss, test_accs = test(epoch, test_loader, net, criterion)
-
-        # Write metrics to Tensorboard and save the model
-        writer.add_scalars("Loss", {'Train': train_loss, 'Test': test_loss}, epoch)
-        writer.add_scalars("TestRecall@N",
-                           {'1@N': test_accs[0], '2@N': test_accs[1], '3@N': test_accs[2], '4@N': test_accs[3],
-                            '5@N': test_accs[4], '10@N': test_accs[5], '15@N': test_accs[6],
-                            '20@N': test_accs[7], '25@N': test_accs[-1]}, epoch)
-        writer.add_scalars("TrainRecall@N",
-                           {'1@N': train_accs[0], '2@N': train_accs[1], '3@N': train_accs[2], '4@N': train_accs[3],
-                            '5@N': train_accs[4], '10@N': train_accs[5], '15@N': train_accs[6],
-                            '20@N': train_accs[7], '25@N': train_accs[-1]}, epoch)
+        test_loss, accs = test(epoch, test_loader, net, criterion)
+        print(f"Train loss: {test_loss}, Accuracy: {accs}")
+        write_accs("TestRecall@N", accs, writer, epoch)
+        write_loss('Test', test_loss, writer, epoch)
         writer.flush()
+
         torch.save(net.state_dict(), "./nets/net-" + str(epoch))
 
     # Finalize

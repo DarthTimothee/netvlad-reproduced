@@ -39,7 +39,7 @@ class Cache:
                 q_vlads = net(q_tensors).detach().numpy()
                 self.query_vlads[query_id:query_id + q_vlads.shape[0]] = q_vlads
                 if t_parent:
-                    t_parent.set_postfix(caching=f"{(query_id // total) * 100}%")
+                    t_parent.set_postfix(caching=f"{query_id * 100 // total}%")
                 else:
                     t.update(q_vlads.shape[0])
 
@@ -48,7 +48,7 @@ class Cache:
                 i_vlads = net(i_tensors).detach().numpy()
                 self.image_vlads[image_id:image_id + i_vlads.shape[0]] = i_vlads
                 if t_parent:
-                    t_parent.set_postfix(caching=f"{((n_queries + image_id) // total) * 100}%")
+                    t_parent.set_postfix(caching=f"{(n_queries + image_id) * 100 // total}%")
                 else:
                     t.update(i_vlads.shape[0])
 

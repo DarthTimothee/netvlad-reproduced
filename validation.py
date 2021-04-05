@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 
-def validate(net, database, n_trees=1000):
+def validate(net, database):
     all_n = [1, 2, 3, 4, 5, 10, 15, 20, 25]
     total_correct = np.zeros(len(all_n))
 
