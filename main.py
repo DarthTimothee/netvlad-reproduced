@@ -26,6 +26,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
     """
     total_loss = 0
     total_count = 0
+    avg_loss = 0
     global cache_lifetime
 
     net.unfreeze()
@@ -53,6 +54,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
         avg_loss = total_loss / total_count
         t.set_postfix(ram_usage=ram_usage(), loss=avg_loss)
 
+    validate(net, train_database)
     return avg_loss
 
 
@@ -67,6 +69,7 @@ def test(epoch, test_loader, net, criterion):
     """
     total_loss = 0
     total_count = 0
+    avg_loss = 0
     test_database.update_cache(net)
 
     net.freeze()
