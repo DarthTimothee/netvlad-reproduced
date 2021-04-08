@@ -1,9 +1,9 @@
-from torch import nn, optim
+from torch import nn, optim, cuda
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 
-from NetVladCNN import NetVladCNN, AlexBase, L2Norm, Reshape
+from NetVLAD import AlexBase, L2Norm, Reshape, NetVLAD, FullNetwork
 from database import Database
 from helpers import *
 from validation import validate
@@ -28,8 +28,6 @@ def train(epoch, train_loader, net, optimizer, criterion):
     avg_loss = 0
     global cache_lifetime
 
-    net.unfreeze()
-
     # iterate through batches
     t = pbar(train_loader, color=Fore.BLUE, desc=f"Training epoch {epoch}", smoothing=0)
     t.set_postfix(ram_usage=ram_usage())
@@ -46,7 +44,7 @@ def train(epoch, train_loader, net, optimizer, criterion):
 
         loss.backward()
         optimizer.step()
-        total_loss += loss.detach().numpy()
+        total_loss += loss.cpu().detach().numpy()
 
         cache_lifetime += batch_size
         total_count += batch_size
@@ -71,8 +69,6 @@ def test(epoch, test_loader, net, criterion):
     avg_loss = 0
     test_database.update_cache(net)
 
-    net.freeze()
-
     # Use torch.no_grad to skip gradient calculation, not needed for evaluation
     with torch.no_grad():
         # iterate through batches
@@ -89,7 +85,6 @@ def test(epoch, test_loader, net, criterion):
 
     # Calculate recall@N accuracies
     accs = validate(net, test_database)
-    net.unfreeze()
 
     return avg_loss, accs
 
@@ -105,64 +100,78 @@ if __name__ == '__main__':
     wd = 0.001
     batch_size = 4
     epochs = 30
+    num_cluster_samples = 1000
+    image_resolution = 224
+    preprocessing_mode = 'disk'  # should be 'ram' or 'disk'.
     # torch.set_num_threads(4)
+
+    # Create the databases + datasets + dataloaders
+    if cuda.is_available():
+        device = torch.device('cuda')
+        train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/',
+                                  image_resolution=image_resolution, preprocess_mode=preprocessing_mode)
+        test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/',
+                                 image_resolution=image_resolution, preprocess_mode=preprocessing_mode)
+        train_set = Vlataset(train_database)
+        test_set = VlataTest(test_database)
+        train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=3, pin_memory=True)
+        test_loader = DataLoader(test_set, batch_size=batch_size, num_workers=3, pin_memory=True)
+    else:
+        device = torch.device('cpu')
+        train_database = Database('./datasets/pitts30k_train.mat', image_resolution=image_resolution,
+                                  preprocess_mode=preprocessing_mode)
+        test_database = Database('./datasets/pitts30k_test.mat', image_resolution=image_resolution,
+                                 preprocess_mode=preprocessing_mode)
+        train_set = Vlataset(train_database)
+        test_set = VlataTest(test_database)
+        train_loader = DataLoader(train_set, batch_size=batch_size)
+        test_loader = DataLoader(test_set, batch_size=batch_size)
 
     # Create instance of Network
     # base_network = VGG16()  # AlexBase()
-    base_network = AlexBase()
+    base_network = AlexBase().cuda()
     D = base_network.get_output_dim()
-
-    # Create loss function and optimizer
-    pairwise_distance = nn.PairwiseDistance()
-    criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum')
-    # loss_function2 = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum')
-    # TODO: try with other loss function
-    # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
-    # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
-
-    # Create the databases + datasets + dataloaders
-    try:
-        train_database = Database('./datasets/pitts30k_train.mat')
-        test_database = Database('./datasets/pitts30k_test.mat')
-    except:
-        train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/')
-        test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/')
-    train_set = Vlataset(train_database)
-    test_set = VlataTest(test_database)
-    train_loader = DataLoader(train_set, batch_size=batch_size)
-    test_loader = DataLoader(test_set, batch_size=batch_size)
 
     # Get the N by passing a random image from the dataset though the network
     sample_out = base_network(train_database.query_tensor_from_stash(0).unsqueeze(0))
     _, _, W, H = sample_out.shape
     N = W * H
 
+    # Create loss function and optimizer
+    pairwise_distance = nn.PairwiseDistance()
+    criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum').cuda()
+    # loss_function2 = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum')
+    # TODO: try with other loss function
+    # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
+    # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
+
     # Specify the type of pooling to use
-    using_vlad = False
+    using_vlad = True
     if using_vlad:
-        pooling_layer = None
         K = 64
+        pooling_layer = NetVLAD(K=K, D=D, cluster_database=train_database, base_cnn=base_network, N=N,
+                                cluster_samples=num_cluster_samples)
     else:
         # TODO: over what dimension should we normalize in the L2Norm layer?
         # TODO: not 1x1 but other shape -> but what shape?
-        #pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
-        #K = N
-        pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), Reshape(), L2Norm())
+        # K = N
+        # pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
         K = 1
+        pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), Reshape(), L2Norm())
 
     # Create the full net
-    net = NetVladCNN(base_cnn=base_network, pooling_layer=pooling_layer, K=K)
+    net = FullNetwork(K, D, base_network, pooling_layer).cuda()
+
     path = None  # TODO: import net from file
     if path:
         net.load_state_dict(torch.load(path))
-    optimizer = optim.SGD(net.parameters(), lr=lr)
+    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
     # Write the architecture of the net
-    summary(net, (3, 480, 640))
+    summary(net, (3, 480, 640), device='cuda' if cuda.is_available() else 'cpu')
     writer.add_graph(net, train_database.query_tensor_from_stash(0).unsqueeze(0))
 
-    # Init the clusters and cache
-    net.init_clusters(train_database, N=N, num_samples=1000)
+    # Init the cache
     train_database.update_cache(net)
 
     for epoch in range(1, epochs + 1):

@@ -41,3 +41,7 @@ def write_accs(name, accs, writer, epoch):
 
 def write_loss(name, loss, writer, epoch):
     writer.add_scalars("Loss", {name: loss}, epoch)
+
+
+def get_device():
+    return torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
