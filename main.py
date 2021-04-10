@@ -92,7 +92,7 @@ if __name__ == '__main__':
     epochs = 30
     num_cluster_samples = 1000
     input_scale = 224
-    preprocessing_mode = 'disk'  # should be 'ram' or 'disk'.
+    preprocessing_mode = 'disk'
     assert preprocessing_mode in ['disk', 'ram', None]
     save_model = False
     load_model_path = None  # TODO: import net from file
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     # Specify the type of pooling to use
     pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
-    # pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), nn.Flatten(), L2Norm())
+    # pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
 
     # Create the full net
     net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)

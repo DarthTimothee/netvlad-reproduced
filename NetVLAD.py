@@ -12,19 +12,13 @@ from helpers import pbar, get_device
 device = get_device()
 
 
-class Reshape(nn.Module):
-    def forward(self, input):
-        return input.view((input.shape[0], input.shape[1], input.shape[2] * input.shape[3])).permute(0, 2, 1).view(
-            (input.shape[0], -1))
-
-
 class L2Norm(nn.Module):
-    def __init__(self, dim=1):  # TODO: what dim?
+    def __init__(self, dim=1):
         super().__init__()
         self.dim = dim
 
-    def forward(self, input):
-        return F.normalize(input, p=2, dim=self.dim)
+    def forward(self, x):
+        return F.normalize(x, p=2, dim=self.dim)
 
 
 class FullNetwork(nn.Module):
@@ -34,7 +28,13 @@ class FullNetwork(nn.Module):
 
         self.K = pooling.K if isinstance(pooling, NetVLAD) else 1
         self.D = features.get_output_dim()
-        self.group = nn.Sequential(features, pooling)
+        self.group = nn.Sequential(*list(filter(None, [
+            features,
+            pooling,
+            L2Norm(dim=2) if isinstance(pooling, NetVLAD) else None,
+            nn.Flatten(),
+            L2Norm()
+        ])))
 
     def forward(self, x):
         return self.group(x.to(device))
@@ -50,6 +50,7 @@ class FullNetwork(nn.Module):
         self.group[0].unfreeze()
         if isinstance(self.group[1], NetVLAD):
             self.group[1].unfreeze()
+
 
 class NetVLAD(nn.Module):
 
@@ -101,39 +102,16 @@ class NetVLAD(nn.Module):
         input: x <- (batch_size, D, H, W) map interpreted as N x D local descriptors x
         output:     (batch_size, K * D) VLAD vectors
         """
-        K, D = self.K, self.D
-        H, W = x.shape[2:]
-        batch_size = x.shape[0]
-        N = W * H
-        # assert x.shape == (batch_size, D, H, W)
+        K, D, (batch_size, _, H, W) = self.K, self.D, x.shape[:]
 
         # Soft assignment
-        features = self.conv(x)
-        # assert features.shape == (batch_size, K, H, W)
+        a_bar = F.softmax(self.conv(x), dim=2)
 
-        a_bar = F.softmax(features, dim=2)
-        # assert a_bar.shape == (batch_size, K, H, W)
+        x = x.view(batch_size, D, -1)  # "interpret as N x D local descriptors"
+        a_bar = a_bar.view(batch_size, K, -1)
 
-        x = x.view(batch_size, D, N)  # "interpret as N x D local descriptors"
-        a_bar = a_bar.view(batch_size, K, N)
-        # assert x.shape == (batch_size, D, N)
-        # assert a_bar.shape == (batch_size, K, N)
-
-        R = self.c * torch.sum(a_bar, dim=2).unsqueeze(-1)
-        L = torch.bmm(a_bar, x.permute(0, 2, 1))
-        V = L + R
-        # assert V.shape == (batch_size, K, D)
-
-        # TODO: double check the normalization here, because I don't trust it
-        # NOTE: intra_normalization should be column-wise. Assumed K are the columns here
-        # Intra normalization (column-wise L2 normalization):
-
-        # First normalize column-wise, then flatten the entire thing to be able to normalize in its entirety
-        V = F.normalize(V, p=2, dim=2)
-        V = V.view(x.shape[0], D * K)
-        V = F.normalize(V, p=2)
-
-        return V
+        # Vlad core calculation
+        return torch.bmm(a_bar, x.permute(0, 2, 1)) + self.c * torch.sum(a_bar, dim=2).unsqueeze(-1)
 
 
 class AlexBase(nn.Module):
