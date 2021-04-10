@@ -1,37 +1,33 @@
-from torch import nn
+from torch import cuda
 
-from NetVLAD import AlexBase, NetVLAD, Reshape, L2Norm, FullNetwork
+from NetVLAD import AlexBase, NetVLAD, FullNetwork
 from database import Database
+from helpers import get_device
 from validation import validate
 
-train_database = Database('./datasets/pitts30k_val.mat', dataset_url='./data/', image_resolution=224, preprocess_mode='disk')
+device = get_device()
+
+# Hacky data path:
+DATA_PATH = '../pittsburgh250k' if cuda.is_available() else 'G:/School/Deep Learning/data/'
+
+train_database = Database(data_path=DATA_PATH, database='pitts30k_val', input_scale=224, preprocess_mode='disk')
 # train_set = Vlataset(train_database)
 # train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=3)
-base_network = AlexBase().cuda()
+base_network = AlexBase().to(device)
 D = base_network.get_output_dim()
 
 # Get the N by passing a random image from the dataset though the network
-sample_out = base_network(train_database.query_tensor_from_stash(0).unsqueeze(0))
+sample_out = base_network(train_database.get_query_tensor(0))
 _, _, W, H = sample_out.shape
 N = W * H
 
-alpha = 1000000
-
 # Specify the type of pooling to use
-using_vlad = False
-if using_vlad:
-    K = 64
-    pooling_layer = NetVLAD(K=K, D=D, cluster_database=train_database, base_cnn=base_network, N=N, cluster_samples=1000, alpha=alpha)
-else:
-    # TODO: over what dimension should we normalize in the L2Norm layer?
-    # TODO: not 1x1 but other shape -> but what shape?
-    # K = N
-    # pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
-    K = 1
-    pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), Reshape(), L2Norm())
+pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=1000)
+# pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), nn.Flatten(), L2Norm())
 
 # Create the full net
-net = FullNetwork(K, D, base_network, pooling_layer).cuda()
-train_database.cache.update(net, cache_batch_size=42)
+net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
 
+# Update the cache for the train validation set, and validate
+train_database.cache.update(net, cache_batch_size=42)
 print(validate(net, train_database))

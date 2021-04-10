@@ -10,14 +10,14 @@ def validate(net, database, use_faiss=True):
     if use_faiss:
         print('Faiss -> fitting to cache for validation')
         faiss_index = faiss.IndexFlatL2(net.D * net.K)
-        faiss_index.add(database.cache.image_vlads.reshape((-1, net.K * net.D)))
-        _, all_neighbors = faiss_index.search(database.cache.query_vlads.reshape((-1, net.K * net.D)), max(all_n))
+        faiss_index.add(database.cache.image_vlads)
+        _, all_neighbors = faiss_index.search(database.cache.query_vlads, max(all_n))
 
     else:
         print('Sklearn -> fitting to cache for validation')
         nn = NearestNeighbors(n_neighbors=all_n[-1], p=2, n_jobs=-1)
-        nn.fit(database.cache.image_vlads.reshape((-1, net.K * net.D)))
-        all_neighbors = nn.kneighbors(database.cache.query_vlads.reshape((-1, net.K * net.D)), return_distance=False)
+        nn.fit(database.cache.image_vlads)
+        all_neighbors = nn.kneighbors(database.cache.query_vlads, return_distance=False)
 
     print('Done fitting, starting validation...')
     for query_id, neighbors in enumerate(all_neighbors):

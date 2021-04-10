@@ -19,13 +19,13 @@ class Vlataset(Dataset):
         # Group all the queries with the same position together
         pos_query = defaultdict(list)
         for query_id in range(self.database.num_queries):
-            x, y = self.database.image_position(query_id)
+            x, y = self.database.image_positions[query_id]
             pos_query[(x, y)].append(query_id)
 
         # Group all the images with the same position together
         pos_image = defaultdict(list)
         for image_id in range(self.database.num_images):
-            x, y = self.database.image_position(image_id)
+            x, y = self.database.image_positions[image_id]
             pos_image[(x, y)].append(image_id)
 
         # Find the image positions close to the query positions
@@ -38,7 +38,7 @@ class Vlataset(Dataset):
                     for query_id in query_indices:
                         potential_positives = self.potential_positives[query_id]
                         for image_id in image_indices:
-                            if not self.database.query_name(query_id) == self.database.image_name(image_id):
+                            if not self.database.query_filename(query_id) == self.database.image_filename(image_id):
                                 potential_positives.append(image_id)
 
     def __distance_to_query(self, query_id, image_id):
@@ -72,9 +72,9 @@ class Vlataset(Dataset):
     def __getitem__(self, query_id):
         best_positive = self._best_positive(query_id)
         hard_negatives = self._hard_negatives(query_id)
-        query_tensor = self.database.query_tensor_from_stash(query_id)
-        positive_tensor = self.database.image_tensor_from_stash(best_positive)
-        negative_tensors = [self.database.image_tensor_from_stash(n) for n in hard_negatives]
+        query_tensor = self.database.get_query_tensor(query_id).squeeze()
+        positive_tensor = self.database.get_image_tensor(best_positive).squeeze()
+        negative_tensors = [self.database.get_image_tensor(n).squeeze() for n in hard_negatives]
         return query_tensor, positive_tensor, negative_tensors
 
     def __len__(self):

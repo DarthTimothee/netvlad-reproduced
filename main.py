@@ -1,9 +1,10 @@
+import sys
 from torch import nn, optim, cuda
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 
-from NetVLAD import AlexBase, L2Norm, Reshape, NetVLAD, FullNetwork
+from NetVLAD import AlexBase, NetVLAD, FullNetwork
 from database import Database
 from helpers import *
 from validation import validate
@@ -14,19 +15,12 @@ cache_lifetime = 0
 
 
 def train(epoch, train_loader, net, optimizer, criterion):
-    """
-    Trains network for one epoch in batches.
-
-    Args:
-        train_loader: Data loader for training set.
-        net: Neural network model.
-        optimizer: Optimizer (e.g. SGD).
-        criterion: Loss function (e.g. cross-entropy loss).
-    """
     total_loss = 0
     total_count = 0
     avg_loss = 0
     global cache_lifetime
+
+    net.unfreeze()
 
     # iterate through batches
     t = pbar(train_loader, color=Fore.BLUE, desc=f"Training epoch {epoch}", smoothing=0)
@@ -56,20 +50,13 @@ def train(epoch, train_loader, net, optimizer, criterion):
 
 
 def test(epoch, test_loader, net, criterion):
-    """
-    Evaluates network in batches.
-
-    Args:
-        test_loader: Data loader for test set.
-        net: Neural network model.
-        criterion: Loss function (e.g. cross-entropy loss).
-    """
     total_loss = 0
     total_count = 0
     avg_loss = 0
+
+    net.freeze()
     test_database.update_cache(net)
 
-    # Use torch.no_grad to skip gradient calculation, not needed for evaluation
     with torch.no_grad():
         # iterate through batches
         t = pbar(test_loader, color=Fore.CYAN, desc=f"Testing epoch {epoch}")
@@ -93,6 +80,9 @@ if __name__ == '__main__':
     # Create a writer to write to Tensorboard
     writer = SummaryWriter()
 
+    # Data path can be passed as the first argument to the program, otherwise the default is used
+    DATA_PATH = 'G:/School/Deep Learning/data/' if len(sys.argv) < 2 else sys.argv[1]
+
     # Hyper parameters, based on the appendix
     m = 0.1  # margin for the loss
     lr = 0.001  # or 0.0001 depending on the experiment, which is halved every 5 epochs
@@ -101,75 +91,57 @@ if __name__ == '__main__':
     batch_size = 4
     epochs = 30
     num_cluster_samples = 1000
-    image_resolution = 224
+    input_scale = 224
     preprocessing_mode = 'disk'  # should be 'ram' or 'disk'.
+    assert preprocessing_mode in ['disk', 'ram', None]
+    save_model = False
+    load_model_path = None  # TODO: import net from file
     # torch.set_num_threads(4)
 
     # Create the databases + datasets + dataloaders
+    train_database = Database(data_path=DATA_PATH, database='pitts30k_train', input_scale=input_scale,
+                              preprocess_mode=preprocessing_mode)
+    test_database = Database(data_path=DATA_PATH, database='pitts30k_val', input_scale=input_scale,
+                             preprocess_mode=preprocessing_mode)
+    train_set = Vlataset(train_database)
+    test_set = VlataTest(test_database)
+
+    device = get_device()
     if cuda.is_available():
-        device = torch.device('cuda')
-        train_database = Database('./datasets/pitts30k_train.mat', dataset_url='./data/',
-                                  image_resolution=image_resolution, preprocess_mode=preprocessing_mode)
-        test_database = Database('./datasets/pitts30k_test.mat', dataset_url='./data/',
-                                 image_resolution=image_resolution, preprocess_mode=preprocessing_mode)
-        train_set = Vlataset(train_database)
-        test_set = VlataTest(test_database)
         train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=3, pin_memory=True)
         test_loader = DataLoader(test_set, batch_size=batch_size, num_workers=3, pin_memory=True)
     else:
-        device = torch.device('cpu')
-        train_database = Database('./datasets/pitts30k_train.mat', image_resolution=image_resolution,
-                                  preprocess_mode=preprocessing_mode)
-        test_database = Database('./datasets/pitts30k_test.mat', image_resolution=image_resolution,
-                                 preprocess_mode=preprocessing_mode)
-        train_set = Vlataset(train_database)
-        test_set = VlataTest(test_database)
         train_loader = DataLoader(train_set, batch_size=batch_size)
         test_loader = DataLoader(test_set, batch_size=batch_size)
 
     # Create instance of Network
     # base_network = VGG16()  # AlexBase()
-    base_network = AlexBase().cuda()
-    D = base_network.get_output_dim()
+    base_network = AlexBase().to(device)
 
     # Get the N by passing a random image from the dataset though the network
-    sample_out = base_network(train_database.query_tensor_from_stash(0).unsqueeze(0))
+    sample_out = base_network(train_database.get_query_tensor(0))
     _, _, W, H = sample_out.shape
     N = W * H
 
     # Create loss function and optimizer
     pairwise_distance = nn.PairwiseDistance()
-    criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum').cuda()
-    # loss_function2 = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum')
-    # TODO: try with other loss function
-    # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginLoss.html
-    # https://pytorch.org/docs/stable/generated/torch.nn.TripletMarginWithDistanceLoss.html#torch.nn.TripletMarginWithDistanceLoss
+    criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum').to(device)
+    # criterion = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum').to(device)
 
     # Specify the type of pooling to use
-    using_vlad = True
-    if using_vlad:
-        K = 64
-        pooling_layer = NetVLAD(K=K, D=D, cluster_database=train_database, base_cnn=base_network, N=N,
-                                cluster_samples=num_cluster_samples)
-    else:
-        # TODO: over what dimension should we normalize in the L2Norm layer?
-        # TODO: not 1x1 but other shape -> but what shape?
-        # K = N
-        # pooling_layer = nn.Sequential(nn.MaxPool2d((1, 1)), Reshape(), L2Norm())
-        K = 1
-        pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), Reshape(), L2Norm())
+    pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
+    # pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), nn.Flatten(), L2Norm())
 
     # Create the full net
-    net = FullNetwork(K, D, base_network, pooling_layer).cuda()
+    net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
 
-    path = None  # TODO: import net from file
-    if path:
-        net.load_state_dict(torch.load(path))
+    if load_model_path:
+        net.load_state_dict(torch.load(load_model_path))
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
     # Write the architecture of the net
     summary(net, (3, 480, 640), device='cuda' if cuda.is_available() else 'cpu')
-    writer.add_graph(net, train_database.query_tensor_from_stash(0).unsqueeze(0))
+    writer.add_graph(net, train_database.get_query_tensor(0))
 
     # Init the cache
     train_database.update_cache(net)
@@ -181,24 +153,25 @@ if __name__ == '__main__':
             optimizer.learning_rate = lr
 
         # Train on data
-        train_loss, accs = train(epoch, train_loader, net, optimizer, criterion)
-        print(f"Train loss: {train_loss}, Accuracy: {accs}")
-        write_accs("TrainRecall@N", accs, writer, epoch)
+        train_loss, train_accs = train(epoch, train_loader, net, optimizer, criterion)
+        print(f"Train loss: {train_loss}, Accuracy: {train_accs}")
+        write_accs("TrainRecall@N", train_accs, writer, epoch)
         write_loss('Train', train_loss, writer, epoch)
         writer.flush()
 
-        # Calculate loss and recall@N accuracies with test set  TODO: validation set
-        test_loss, accs = test(epoch, test_loader, net, criterion)
-        print(f"Train loss: {test_loss}, Accuracy: {accs}")
-        write_accs("TestRecall@N", accs, writer, epoch)
+        # Calculate loss and recall@N accuracies with validations
+        test_loss, test_accs = test(epoch, test_loader, net, criterion)
+        print(f"Train loss: {test_loss}, Accuracy: {test_accs}")
+        write_accs("TestRecall@N", test_accs, writer, epoch)
         write_loss('Test', test_loss, writer, epoch)
         writer.flush()
 
-        torch.save(net.state_dict(), "./nets/net-" + str(epoch))
+        if save_model:
+            torch.save(net.state_dict(), "./nets/net-" + str(epoch))
 
     # Finalize
     print('Finished Training')
     writer.flush()
     writer.close()
 
-    # TODO: test model with lowest lost (or highest accuracy?) on test set
+    # TODO: test model with highest accuracy on test set
