@@ -94,7 +94,7 @@ if __name__ == '__main__':
     input_scale = 224
     preprocessing_mode = 'disk'
     assert preprocessing_mode in ['disk', 'ram', None]
-    save_model = False
+    save_model = True
     load_model_path = None  # TODO: import net from file
     # torch.set_num_threads(4)
 
@@ -129,15 +129,19 @@ if __name__ == '__main__':
     # criterion = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum').to(device)
 
     # Specify the type of pooling to use
-    # pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
-    pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
+    pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
+    # pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
 
     # Create the full net
     net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
 
     if load_model_path:
         net.load_state_dict(torch.load(load_model_path))
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay=wd)
+
+    optimizer = optim.SGD(filter(lambda p: p.requires_grad,
+                net.parameters()), lr=lr, momentum=momentum, weight_decay=wd)
+
+    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
 
     # Write the architecture of the net
     summary(net, (3, 480, 640), device='cuda' if cuda.is_available() else 'cpu')
