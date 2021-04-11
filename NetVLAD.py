@@ -116,13 +116,13 @@ class NetVLAD(nn.Module):
         K, D, (batch_size, _, H, W) = self.K, self.D, x.shape[:]
 
         # Soft assignment
-        a_bar = F.softmax(self.conv(x), dim=2)
-
-        x = x.view(batch_size, D, -1)  # "interpret as N x D local descriptors"
+        a_bar = F.softmax(self.conv(x), dim=1)
         a_bar = a_bar.view(batch_size, K, -1)
 
+        x = x.view(batch_size, D, -1)  # "interpret as N x D local descriptors"
+
         # Vlad core calculation
-        return torch.bmm(a_bar, x.permute(0, 2, 1)) + self.c * torch.sum(a_bar, dim=2).unsqueeze(-1)
+        return torch.bmm(a_bar, x.permute(0, 2, 1)) - self.c * torch.sum(a_bar, dim=2).unsqueeze(-1)
 
 
 class AlexBase(nn.Module):
