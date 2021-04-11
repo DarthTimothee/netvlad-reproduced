@@ -34,12 +34,13 @@ class Vlataset(Dataset):
             for pos_i, image_indices in pos_image.items():
                 x1, y1 = pos_q
                 x2, y2 = pos_i
-                if math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) < 10:
+                distance = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+                if distance < 10:
                     # Store all the image positions in all the training tuples
                     for query_id in query_indices:
                         for image_id in image_indices:
                             self.potential_positives[query_id].append(image_id)
-                elif 10 <= math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) < 25:
+                elif distance < 25:
                     # Store all the image positions in all the training tuples
                     for query_id in query_indices:
                         for image_id in image_indices:
