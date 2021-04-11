@@ -110,6 +110,7 @@ class Database:
             self.query_tensors = np.zeros(query_stash_shape, dtype="float32")
             self.image_tensors = np.zeros(image_stash_shape, dtype="float32")
             self.__build_stash(desc=r)
+            return
 
         w = '_white' if self.whitening else ''
         res = self.input_scale[0] if self.input_scale else 'fullres'
@@ -129,6 +130,7 @@ class Database:
 
         self.__build_stash(desc=r)
 
+        print("Saving preprocessed data")
         self.query_tensors.flush()
         self.image_tensors.flush()
 

@@ -19,7 +19,7 @@ class Vlataset(Dataset):
         # Group all the queries with the same position together
         pos_query = defaultdict(list)
         for query_id in range(self.database.num_queries):
-            x, y = self.database.image_positions[query_id]
+            x, y = self.database.query_positions[query_id]
             pos_query[(x, y)].append(query_id)
 
         # Group all the images with the same position together

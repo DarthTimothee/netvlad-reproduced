@@ -1,6 +1,6 @@
-from torch import cuda
+from torch import cuda, nn
 
-from NetVLAD import AlexBase, NetVLAD, FullNetwork
+from NetVLAD import AlexBase, FullNetwork, L2Norm
 from database import Database
 from helpers import get_device
 from validation import validate
@@ -22,8 +22,8 @@ _, _, W, H = sample_out.shape
 N = W * H
 
 # Specify the type of pooling to use
-pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=1000)
-# pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), nn.Flatten(), L2Norm())
+# pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=1000)
+pooling_layer = nn.Sequential(nn.AdaptiveMaxPool2d((1, 1)), nn.Flatten(), L2Norm())
 
 # Create the full net
 net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)

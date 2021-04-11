@@ -129,8 +129,8 @@ if __name__ == '__main__':
     # criterion = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum').to(device)
 
     # Specify the type of pooling to use
-    pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
-    # pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
+    # pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
+    pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
 
     # Create the full net
     net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
