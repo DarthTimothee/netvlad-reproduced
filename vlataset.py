@@ -28,6 +28,7 @@ class Vlataset(Dataset):
             x, y = self.database.image_positions[image_id]
             pos_image[(x, y)].append(image_id)
 
+        safequard = [list() for _ in range(self.database.num_queries)]
         # Find the image positions close to the query positions
         for pos_q, query_indices in pos_query.items():
             for pos_i, image_indices in pos_image.items():
@@ -38,6 +39,15 @@ class Vlataset(Dataset):
                     for query_id in query_indices:
                         for image_id in image_indices:
                             self.potential_positives[query_id].append(image_id)
+                elif 10 <= math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) < 25:
+                    # Store all the image positions in all the training tuples
+                    for query_id in query_indices:
+                        for image_id in image_indices:
+                            safequard[query_id].append(image_id)
+
+        for query_id in range(self.database.num_queries):
+            if len(self.potential_positives[query_id]) == 0:
+                self.potential_positives[query_id] = safequard[query_id]
 
     def __distance_to_query(self, query_id, image_id):
         vlad1 = self.database.cache.query_vlads[query_id]
