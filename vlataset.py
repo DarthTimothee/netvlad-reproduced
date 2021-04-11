@@ -36,10 +36,8 @@ class Vlataset(Dataset):
                 if math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) < 10:
                     # Store all the image positions in all the training tuples
                     for query_id in query_indices:
-                        potential_positives = self.potential_positives[query_id]
                         for image_id in image_indices:
-                            if not self.database.query_filename(query_id) == self.database.image_filename(image_id):
-                                potential_positives.append(image_id)
+                            self.potential_positives[query_id].append(image_id)
 
     def __distance_to_query(self, query_id, image_id):
         vlad1 = self.database.cache.query_vlads[query_id]
