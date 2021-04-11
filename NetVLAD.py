@@ -101,10 +101,12 @@ class NetVLAD(nn.Module):
         return model.centroids, features
 
     def freeze(self):
+        self.eval()
         for param in self.conv.parameters():
             param.requires_grad = False
 
     def unfreeze(self):
+        self.train()
         for param in self.conv.parameters():
             param.requires_grad = True
 

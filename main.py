@@ -150,7 +150,9 @@ if __name__ == '__main__':
         if epoch > 1 and epoch % 5 == 1:  # 1 because the epochs are 1-indexed
             max_cache_lifetime *= 2
             lr /= 2.0
-            optimizer.learning_rate = lr
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+            # optimizer.learning_rate = lr
 
         # Train on data
         train_loss, train_accs = train(epoch, train_loader, net, optimizer, criterion)
