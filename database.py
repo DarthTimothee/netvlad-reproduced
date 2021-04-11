@@ -35,7 +35,7 @@ class Database:
         end = min(query_id + batch_size, self.num_queries)
         if not self.preprocess_mode:
             if batch_size == 1:
-                self.__query_tensor_from_image(query_id)
+                return self.__query_tensor_from_image(query_id)
             return torch.stack([self.__query_tensor_from_image(i) for i in range(query_id, end)])
         return torch.as_tensor(self.query_tensors[query_id:end])
 
@@ -43,7 +43,7 @@ class Database:
         end = min(image_id + batch_size, self.num_images)
         if not self.preprocess_mode:
             if batch_size == 1:
-                self.__image_tensor_from_image(image_id)
+                return self.__image_tensor_from_image(image_id)
             return torch.stack([self.__image_tensor_from_image(i) for i in range(image_id, end)])
         return torch.as_tensor(self.image_tensors[image_id:end])
 

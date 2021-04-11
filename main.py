@@ -137,7 +137,7 @@ if __name__ == '__main__':
 
     if load_model_path:
         net.load_state_dict(torch.load(load_model_path))
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay=wd)
 
     # Write the architecture of the net
     summary(net, (3, 480, 640), device='cuda' if cuda.is_available() else 'cpu')
@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
         # Calculate loss and recall@N accuracies with validations
         test_loss, test_accs = test(epoch, test_loader, net, criterion)
-        print(f"Train loss: {test_loss}, Accuracy: {test_accs}")
+        print(f"Test loss: {test_loss}, Accuracy: {test_accs}")
         write_accs("TestRecall@N", test_accs, writer, epoch)
         write_loss('Test', test_loss, writer, epoch)
         writer.flush()
