@@ -71,17 +71,18 @@ class NetVLAD(nn.Module):
         use_faiss = True
         if use_faiss:
             faiss_index = faiss.IndexFlatL2(self.D)
-            faiss_index.add(features)
-            distances, _ = faiss_index.search(clusters, 2)
+            faiss_index.add(clusters)
+            distances, _ = faiss_index.search(features, 2)
         else:
             knn = NearestNeighbors(n_jobs=-1)
-            knn.fit(features)
+            knn.fit(clusters)
             # TODO: below is how it is in Nanne's implementation
             #   but the second return of knn.kneighbors is the indices, not the distances
             #   so Nanne is squaring the indices, which doesn't make any sense to me?
-            _, distances = knn.kneighbors(clusters, 2)
+            _, distances = knn.kneighbors(features, 2)
 
         distances_squared = distances ** 2
+
         self.alpha = (-np.log(0.01) / (distances_squared[:, 1] - distances_squared[:, 0]).mean()).item()
         self.conv.weight = nn.Parameter((2.0 * self.alpha * self.c).unsqueeze(-1).unsqueeze(-1))
         self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1))
@@ -91,12 +92,12 @@ class NetVLAD(nn.Module):
 
         features = torch.zeros(num_samples * N, self.D, dtype=torch.float32, device=device)
         with pbar(ids, color=Fore.YELLOW, desc="Calculating cluster centers") as t:
-            for i, v in enumerate(t):
-                feature = base_cnn(database.get_image_tensor(v).to(device))
+            for i, image_id in enumerate(t):
+                feature = base_cnn(database.get_image_tensor(image_id).to(device))  # B, D, W, H
                 features[i * N:(i + 1) * N] = feature.reshape(self.D, N).T
 
         features = features.cpu().detach().numpy()
-        model = faiss.Kmeans(self.D, self.K, verbose=False)
+        model = faiss.Kmeans(self.D, self.K, niter=100, verbose=False)
         model.train(features)
         return model.centroids, features
 

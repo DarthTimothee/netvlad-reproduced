@@ -5,8 +5,8 @@ from PIL import Image
 from torchvision import transforms
 from tqdm import trange
 
-DATA = '../pittsburgh250k'
-DATABASE = 'datasets/pitts250k_val.mat'
+DATA = 'G:/School/Deep Learning/data'
+DATABASE = 'G:/School/Deep Learning/data/datasets/pitts250k_val.mat'
 
 db = scipy.io.loadmat(path.join(DATA, DATABASE))
 
