@@ -54,38 +54,20 @@ class FullNetwork(nn.Module):
 
 class NetVLAD(nn.Module):
 
-    def __init__(self, K, N, cluster_database, base_cnn, cluster_samples=1000, bias=False):
+    def __init__(self, K, N, cluster_database, base_cnn, cluster_samples=1000, alpha=0.1, bias=False):
         super(NetVLAD, self).__init__()
         self.K = K
         self.D = base_cnn.get_output_dim()
+        self.alpha = alpha
         self.conv = nn.Conv2d(in_channels=self.D, out_channels=K, kernel_size=(1, 1), bias=bias)
 
         # Initialize the clusters
         clusters, features = self.init_clusters(database=cluster_database, base_cnn=base_cnn, N=N,
                                                 num_samples=cluster_samples)
+        # TODO: initialize alpha according to appendix
         self.c = nn.Parameter(torch.from_numpy(clusters))
-
-        # Initializations below are borrowed from Nanne,
-        # because we could not figure out what they should be based on only the appendix of the paper.
-        # the faiss implementation is ours:
-        use_faiss = True
-        if use_faiss:
-            faiss_index = faiss.IndexFlatL2(self.D)
-            faiss_index.add(clusters)
-            distances, _ = faiss_index.search(features, 2)
-        else:
-            knn = NearestNeighbors(n_jobs=-1)
-            knn.fit(clusters)
-            # TODO: below is how it is in Nanne's implementation
-            #   but the second return of knn.kneighbors is the indices, not the distances
-            #   so Nanne is squaring the indices, which doesn't make any sense to me?
-            _, distances = knn.kneighbors(features, 2)
-
-        distances_squared = distances ** 2
-
-        self.alpha = (-np.log(0.01) / (distances_squared[:, 1] - distances_squared[:, 0]).mean()).item()
         self.conv.weight = nn.Parameter((2.0 * self.alpha * self.c).unsqueeze(-1).unsqueeze(-1))
-        self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1))
+        self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1) ** 2)
 
     def init_clusters(self, database, base_cnn, N, num_samples=1000):
         ids = np.random.randint(low=0, high=database.num_images, size=num_samples)
