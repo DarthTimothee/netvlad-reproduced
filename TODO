@@ -1,19 +1,20 @@
 
 NECESSARY
-- PCA-whitening
-- vgg16 base network (only train last 3 layers)
+- PCA-whitening                                     (geeeeeen idee)
+- vgg16 base network (only train last 3 layers)     (15 mins)
 
 SPEEDUP
-- GPU
-- colab?
-- run on GCP
+- google cloud platform?
 
-FINALIZE
-- run experiments
+EXPERIMENTS
+- fvlad / alex   (3.5h)
+- fmax / alex    (1h)
+- fvlad / vgg    (>3.5h)
+- fmax / vgg     (?)
+- fvlad / alex / whitening    (3.5h + whitening time)
+- fvlad / vgg / whitening     (>3.5h)
+
+- larger images fvlad / alex (8h)   -> wednesday evening
+
+BLOG
 - poster / blog post
-
-
-
-accuracy op trainset
-minder lang runnen met grotere plaatjes
-fmax pooling ipv fvlad
