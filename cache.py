@@ -10,23 +10,29 @@ device = get_device()
 
 
 class Cache:
-    def __init__(self, database):
+    def __init__(self, database, cache_mode='ram'):
         self.database = database
         self.net = None
         self.query_filename = path.join(mkdtemp(), "query_vlads.dat")
         self.image_filename = path.join(mkdtemp(), "image_vlads.dat")
         self.query_vlads = None
         self.image_vlads = None
+        self.cache_mode = cache_mode
 
     def update(self, net, t_parent=None, cache_batch_size=42):
 
         net.freeze()
         if not self.net:
             self.net = net
-            self.query_vlads = np.memmap(self.query_filename, dtype="float32", mode="w+",
-                                         shape=(self.database.num_queries, net.K * net.D))
-            self.image_vlads = np.memmap(self.image_filename, dtype="float32", mode="w+",
-                                         shape=(self.database.num_images, net.K * net.D))
+
+            if self.cache_mode == 'ram':
+                self.query_vlads = np.zeros(dtype="float32", shape=(self.database.num_queries, net.K * net.D))
+                self.image_vlads = np.zeros(dtype="float32", shape=(self.database.num_images, net.K * net.D))
+            else:
+                self.query_vlads = np.memmap(self.query_filename, dtype="float32", mode="w+",
+                                             shape=(self.database.num_queries, net.K * net.D))
+                self.image_vlads = np.memmap(self.image_filename, dtype="float32", mode="w+",
+                                             shape=(self.database.num_images, net.K * net.D))
 
         n_images = self.database.num_images
         n_queries = self.database.num_queries
@@ -57,5 +63,6 @@ class Cache:
             if not t_parent:
                 t.close()
 
-            self.query_vlads.flush()
-            self.image_vlads.flush()
+            if self.cache_mode == 'disk':
+                self.query_vlads.flush()
+                self.image_vlads.flush()
