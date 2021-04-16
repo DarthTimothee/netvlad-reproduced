@@ -110,9 +110,9 @@ with torch.no_grad():
 The loss is calculated with the TripletMarginWithDistanceLoss class using a custom distance function. There is also a TripletMarginLoss class which we first considered to use, but the problem is that it doesn't use the squared distances.
 
 ```python
-def custom_distance(x1, x2):
+def distance(x1, x2):
     return torch.pairwise_distance(x1, x2) ** 2
 
-criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance,
+criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
                                              margin=m, reduction='sum')
 ```
