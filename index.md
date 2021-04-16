@@ -19,8 +19,6 @@ The difficulty of this problem is that 2 photos taken in the same location might
 
 Before we describe the proposed solution in a more in-depth fashion, we summarize it as follows: Features of a query image are first extracted, using a base network like AlexNet, or VGG16. These are then fed through a new kind of layer, the NetVLAD layer, which assigns the features to cluster centers. The proximity to each these cluster centers is then used to build a fixed-sized feature representation vector, the VLAD vector, of the image that can be used to compare it to images. If their VLAD vectors are very similar, the images are likely to be taken a at (geographically) close location. In this section we describe the proposed NetVLAD layer, and how it can be trained and evaluated.
 
-![NetVLAD banner image](/netvlad-banner.png)
-
 
 ### NetVLAD layer
 
@@ -116,3 +114,5 @@ def distance(x1, x2):
 criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
                                              margin=m, reduction='sum')
 ```
+
+![NetVLAD banner image](/netvlad-banner.png)
