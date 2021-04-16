@@ -116,3 +116,18 @@ criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
 ```
 
 ![NetVLAD banner image](/netvlad-banner.png)
+
+### Experiments
+
+#### Test setup
+
+| Hyperparameter  | Value                      |
+|-----------------|----------------------------|
+| optimizer       | Adam                       |
+| learning rate   | alex: 0.0001, vgg: 0.00001 |
+| weight decay    | 0.01                       |
+| margin          | 0.1                        |
+| cluster samples | 1000                       |
+| image scale     | 224                        |
+| alpha           | 0.1                        |
+| K               | 64                         |
