@@ -22,22 +22,22 @@ Before we describe the proposed solution in a more in-depth fashion, we summariz
 
 ### NetVLAD layer
 
-In the NetVLAD layer, we want to assign each input feature that comes out of the base network to one of the predefined cluster centers. More specifically, we use a convolution layer, followed by a softmax layer layer to calculate the soft-assignment ![a_k(x_i)](/a_bar_k(x_i).gif) of each of the features ![x_i](/x_i.gif) to each of the ![k](/k.gif)-th cluster center. We then use this soft-assignment to weigh the difference between each of the features and clusters as follows (equation 1 from the original paper):
+In the NetVLAD layer, we want to assign each input feature that comes out of the base network to one of the predefined cluster centers. More specifically, we use a convolution layer, followed by a softmax layer layer to calculate the soft-assignment ![a_k(x_i)](/a_bar_k-x_i-.gif) of each of the features ![x_i](/x_i.gif) to each of the ![k](/k.gif)-th cluster center. We then use this soft-assignment to weigh the difference between each of the features and clusters as follows (equation 1 from the original paper):
 
 ![equation 1](/netvlad-eqn1.gif)
 
-where ![N](/N.gif) is the number of features from the base network, which depends on the input image resolution. ![a_k](/a_k.gif) is the soft assignment, ![x_i](/x_i.gif) is a specific input feature and ![c_k](/c_k.gif) is the ![k](/k.gif)'th cluster center. The result is a ![(KxD)](/(KxD).gif) vector ![V](/V.gif), the VLAD vector, where ![K](/K.gif) is the chosen number of clusters, and ![D](/D.gif) is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length ![K * D](/KcdotD.gif) and then L2-normalized in its entirety. The VLAD layer is shown schematically in the figure below (image credits to the original paper):
+where ![N](/N.gif) is the number of features from the base network, which depends on the input image resolution. ![a_k](/a_k.gif) is the soft assignment, ![x_i](/x_i.gif) is a specific input feature and ![c_k](/c_k.gif) is the ![k](/k.gif)'th cluster center. The result is a ![(KxD)](/KxD.gif) vector ![V](/V.gif), the VLAD vector, where ![K](/K.gif) is the chosen number of clusters, and ![D](/D.gif) is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length ![K * D](/KcdotD.gif) and then L2-normalized in its entirety. The VLAD layer is shown schematically in the figure below (image credits to the original paper):
 
 ![NetVLAD layer image](/netvlad-fig2.png)
 
 
 ### Triplet ranking loss
 
-In order to be able to train the proposed layer in an end-to-end fashion, the paper suggests to use training tuples. Each training tuple consists of a query image ![q](/q.gif), the best matching positive image ![p_i^q](/p_i^q.gif) that lies within 10 meters of the query image (geographically) and a couple of negative images ![q_j](/q_j.gif), which are further than 25 meters away from the query image. We want to train the NetVLAD layer to assign features to clusters in such a way that the distance between a query and the best positive ![d(q,p)](/d(q,p).gif) is always less (by some margin ![m](/m.gif)) than the distance between the query and any of the negative images ![d(q,n)](/d(q,n).gif). To this end, the paper proposes a weakly supervised ranking loss ![L](/Loss.gif), which is defined as follows (equation 7 in the original paper):
+In order to be able to train the proposed layer in an end-to-end fashion, the paper suggests to use training tuples. Each training tuple consists of a query image ![q](/q.gif), the best matching positive image ![p_i^q](/p_i^q.gif) that lies within 10 meters of the query image (geographically) and a couple of negative images ![q_j](/q_j.gif), which are further than 25 meters away from the query image. We want to train the NetVLAD layer to assign features to clusters in such a way that the distance between a query and the best positive ![d(q,p)](/d-q,p-.gif) is always less (by some margin ![m](/m.gif)) than the distance between the query and any of the negative images ![d(q,n)](/d-q,n-.gif). To this end, the paper proposes a weakly supervised ranking loss ![L](/Loss.gif), which is defined as follows (equation 7 in the original paper):
 
 ![Loss function](/Loss_function.gif)
 
-In this equation, the ![l(x)](/l(x).gif) denotes the hinge loss ![l(x)=max(x,0)](/hinge_loss.gif). This is the loss for one training tuple, so during a training epoch, we want to minimize the sum of all such losses over the entire train dataset.
+In this equation, the ![l(x)](/l-x-.gif) denotes the hinge loss ![l(x)=max(x,0)](/hinge_loss.gif). This is the loss for one training tuple, so during a training epoch, we want to minimize the sum of all such losses over the entire train dataset.
 
 ### Recall@N accuracy
 
@@ -76,15 +76,9 @@ self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1) ** 2)
 ```
 To implement the VLAD vector calculation in pytorch, we restructed equation 1 as follows:
 
-$$
-V(j,k) = \sum_{i=1}^N a_k(x_i)(x_i(j) - c_k(j))
-$$
-$$
-= \sum_{i=1}^N ( a_k(x_i) x_i(j) - a_k(x_i) c_k(j) )
-$$
-$$
-= \sum_{i=1}^N a_k(x_i) x_i(j) - c_k(j) \sum_{i=1}^N a_k(x_i)
-$$
+![vlad1](/vlad1.gif)
+![vlad2](/vlad2.gif)
+![vlad3](/vlad3.gif)
 
 The last sum over the soft assignments can then be implemented using `torch.sum` turning the second half of the expression into a vector-scalar product. The first half is calculated using `torch.bmm` the built-in tensor operation for batch-wise matrix multiplication. By reshaping the a_bar and x before putting them into the equation, we allow the calculation to be carried out for all the features at once, instead of having to loop over the indices `j` and `k` in `V`. The final (simplified) VLAD core calculation is:
 
