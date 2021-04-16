@@ -3,6 +3,7 @@ _Elwin Duinkerken & Timo Verlaan_
 
 ![NetVLAD banner image](/netvlad-banner.png)
 
+{% include style.html %}
 
 ## Introduction
 
