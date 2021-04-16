@@ -183,4 +183,4 @@ Taking all of the above into account, we believe we reproduced the paper up to s
 
 ## Appendix
 
-[https://arxiv.org/abs/1511.07247][NetVLAD: CNN architecture for weakly supervised place recognition]
+Original paper: ![NetVLAD: CNN architecture for weakly supervised place recognition](https://arxiv.org/abs/1511.07247)
