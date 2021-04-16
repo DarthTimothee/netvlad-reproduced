@@ -68,3 +68,15 @@ if path.exists(query_filename):
     self.query_tensors = np.memmap(query_filename, dtype="float32", mode="r", shape=query_stash_shape)
     self.image_tensors = np.memmap(image_filename, dtype="float32", mode="r", shape=image_stash_shape)
 ```
+
+In order to calculate the loss for each query-image, it requires the VLAD-vector of at least 1000 other database images. For the training dataset, we compute these vectors regularly and store them in a cache which is updated after a certain number of queries. For the test set, the cache is only updated once every epoch, because the VLAD-vectors are only used in order to compute the loss and accuracy.
+
+```python
+net.freeze()
+test_database.update_cache(net)
+
+with torch.no_grad():
+    # iterate through batches
+    for q_vlad, p_vlad, n_vlads in test_loader:
+        loss = sum([criterion(q_vlad, p_vlad, n_vlad) for n_vlad in n_vlads])
+```
