@@ -6,7 +6,7 @@ _Elwin Duinkerken & Timo Verlaan_
 
 ## Introduction
 
-In this article we will discuss the results and progress we made during the reproduction project for the CS4240 Deep Learning course. We reproduced the paper NetVLAD: CNN architecture for weakly supervised place recognition, in which an end-to-end trainable layer for image retrieval is proposed.
+In this article we will discuss the results and progress we made during the reproduction project for the `CS4240 Deep Learning` course. We reproduced the paper `NetVLAD: CNN architecture for weakly supervised place recognition`, in which an end-to-end trainable layer for image retrieval is proposed.
 
 We will start by describing the problem the paper attempts to solve and their proposed solution. After that we will describe our implementation of this solution and support some of the design choices we made. Next, we discuss the experiments we ran, the results we got and compare them to the original results of the paper. Finally we draw some conclusions on the reproducibility of this paper and reflect on our development process.
 
@@ -57,6 +57,26 @@ For the fmax pooling, we used the AdaptiveMaxPool2d from pytorch in order to spe
 #### NetVLAD
 
 The NetVLAD convolution layer initializes the weights and biases using an alpha parameter. According to the paper, this value should be computed so that the ratio of the largest and the second largest soft assignment weight is on average equal to 100. Since we were unsure on how to implement this, we instead looked at the effect of different values for alpha and picked the best one as the final value to use.
+
+To implement the VLAD vector calculation in pytorch, we restructed equation 1 as follows:
+
+$$
+V(j,k) = \sum_{i=1}^N a_k(x_i)(x_i(j) - c_k(j))
+$$
+$$
+= \sum_{i=1}^N ( a_k(x_i) x_i(j) - a_k(x_i) c_k(j) )
+$$
+$$
+= \sum_{i=1}^N a_k(x_i) x_i(j) - c_k(j) \sum_{i=1}^N a_k(x_i)
+$$
+
+The last sum over the soft assignments can then be implemented using `torch.sum` turning the second half of the expression into a vector-scalar product. The first half is calculated using `torch.bmm` the built-in tensor operation for batch-wise matrix multiplication. By reshaping the a_bar and x before putting them into the equation, we allow the calculation to be carried out for all the features at once, instead of having to loop over the indices `j` and `k` in `V`. The final (simplified) VLAD core calculation is:
+
+```python
+V = torch.bmm(a_bar, x) - c * torch.sum(a_bar)
+```
+
+where `a_bar` is the soft-assignment and c are the cluster centers.
 
 ### Database
 
