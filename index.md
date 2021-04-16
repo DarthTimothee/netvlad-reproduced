@@ -1,3 +1,8 @@
+# NetVLAD Reproduction Project
+_Elwin Duinkerken & Timo Verlaan_
+
+![NetVLAD banner image](/netvlad-banner.png)
+
 
 ## Introduction
 
