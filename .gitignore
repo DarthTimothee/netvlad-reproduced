@@ -1,0 +1,7 @@
+idea/
+nets/
+runs/
+preprocessing/
+venv/
+.idea/
+__pycache__/
