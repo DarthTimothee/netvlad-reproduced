@@ -148,6 +148,8 @@ All our results use the following hyperparameters:
 
 ![Figure with our results](/fig5a.png)
 
+![Original paper results](/netvlad-og-plots.png)
+
 
 
 ![NetVLAD banner image](/netvlad-banner.png)
