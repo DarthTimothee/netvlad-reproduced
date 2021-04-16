@@ -77,16 +77,18 @@ self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1) ** 2)
 To implement the VLAD vector calculation in pytorch, we restructed equation 1 as follows:
 
 ![vlad1](/vlad1.gif)
+
 ![vlad2](/vlad2.gif)
+
 ![vlad3](/vlad3.gif)
 
-The last sum over the soft assignments can then be implemented using `torch.sum` turning the second half of the expression into a vector-scalar product. The first half is calculated using `torch.bmm` the built-in tensor operation for batch-wise matrix multiplication. By reshaping the a_bar and x before putting them into the equation, we allow the calculation to be carried out for all the features at once, instead of having to loop over the indices `j` and `k` in `V`. The final (simplified) VLAD core calculation is:
+The last sum over the soft assignments can then be implemented using `torch.sum` turning the second half of the expression into a vector-scalar product. The first half is calculated using `torch.bmm` the built-in tensor operation for batch-wise matrix multiplication. By reshaping the ![a_bar](/a_bar.gif) and ![x](/x.gif) before putting them into the equation, we allow the calculation to be carried out for all the features at once, instead of having to loop over the indices ![j](/j.gif) and ![k](/k.gif) in ![V](/V.gif). The final (simplified) VLAD core calculation is:
 
 ```python
 V = torch.bmm(a_bar, x) - c * torch.sum(a_bar)
 ```
 
-where `a_bar` is the soft-assignment and c are the cluster centers.
+where ![a_bar](/a_bar.gif) is the soft-assignment and c are the cluster centers.
 
 ### Database
 
