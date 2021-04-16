@@ -115,14 +115,20 @@ criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
                                              margin=m, reduction='sum')
 ```
 
-### Experiments
+## Experiments
 
-#### Test setup
+In this section we describe our test setup and show the final results of our implementation. We conducted several experiments with different base networks and pooling strategies, which we compare to the results in the paper.
+
+### Test setup
+
+For the training of the network we used the Pitts30k dataset, which contains 30k street view photos from Pittsburgh. The original paper used the Pitt250k dataset, but the training on this full dataset required a lot more time to complete. Therefore we decided to use the smaller dataset instead.
+
+All our results use the following hyperparameters:
 
 | Hyperparameter  | Value                      |
 |-----------------|----------------------------|
 | optimizer       | Adam                       |
-| learning rate   | alex: 0.0001, vgg: 0.00001 |
+| learning rate   | Alexnet = 0.0001, VGG16 = 0.00001 |
 | weight decay    | 0.01                       |
 | margin          | 0.1                        |
 | cluster samples | 1000                       |
