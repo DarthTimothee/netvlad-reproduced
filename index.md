@@ -157,7 +157,9 @@ Below are the resulting accuracies after training the networks. After our result
 
 ![Original paper results](/netvlad-og-plots.png)
 
-Looking at the graphs, we notice that our off-the-shelf accuracies are similar, but become comparatively lower after training.
+Looking at the graphs, we notice that our off-the-shelf accuracies are similar, but become comparatively lower after training. Especially alexnet has significant lower accuracies in our model compared to the original paper. After running the experiments, we realized that we only used an input resolution of size 224x244, but alexnet is trained on images of resolution size 256x256. We are not sure if this difference is significant enough to explain the difference in result, and a new experiment would be needed to test this hypothesis.
+
+We also tested the accuracy when we remove the pooling layer entirely and only use the base network. Surprisingly, the accuracies are the best in all cases when compared to the same architecture which does use a pooling layer. A downside of not using any pooling, is that the output dimension is higher, and thus slower to compare against the rest of the database images. The higher dimensionality might also explain why the accuracy is this high, since all the features of the images are being used to compare the output vectors.
 
 ## Conclusion
 
