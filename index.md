@@ -150,8 +150,7 @@ All our results use the following hyperparameters:
 | alpha           | 0.1                        |
 | K               | 64                         |
 
-
-## Plaatje voor de results
+### Results
 
 ![Figure with our results](/fig5a.png)
 
