@@ -76,6 +76,17 @@ Based on this graph, and keeping in mind that we do not want the weights to grow
 self.conv.weight = nn.Parameter(2.0 * self.alpha *  self.c)
 self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1) ** 2)
 ```
+
+The clusters mentioned above have to be calculated before we start training the model. We do this by training a k-means classifier on the features that come out of the base network of 1000 randomly sampled images. We used faiss for this, but it should be possible with any k-means implementation. Our implementation of this clustering is shown below.
+
+```python
+model = faiss.Kmeans(D, K, niter=100)
+model.train(features)
+return model.centroids, features
+```
+
+This part of our implementation can potentially be improved quite a bit, in terms of runtime, by using the gpu version of faiss for this part, but since only a little part of the runtime is spent in this part of the implementation, this was not a priority.
+
 To implement the VLAD vector calculation in pytorch, we restructed equation 1 as follows:
 
 ![vlad1](/vlad1.gif)
