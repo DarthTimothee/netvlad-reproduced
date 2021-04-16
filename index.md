@@ -12,7 +12,31 @@ The difficulty of this problem is that 2 photos taken in the same location might
 
 ## Solution
 
-...
+Before we describe the proposed solution in a more in-depth fashion, we summarize it as follows: Features of a query image are first extracted, using a base network like AlexNet, or VGG16. These are then fed through a new kind of layer, the NetVLAD layer, which assigns the features to cluster centers. The proximity to each these cluster centers is then used to build a fixed-sized feature representation vector, the VLAD vector, of the image that can be used to compare it to images. If their VLAD vectors are very similar, the images are likely to be taken a at (geographically) close location. In this section we describe the proposed NetVLAD layer, and it can be trained and evaluated.
+
+### NetVLAD layer
+
+In the NetVLAD layer, we want to assign each input feature that comes out of the base network to one of the predefined cluster centers. More specifically, we use a convolution layer, followed by a softmax layer layer to calculate the soft-assignment $\bar{a}_k(x_i)$ of each of the features $x_i$ to each of the $k$-th cluster center. We then use this soft-assignment to weigh the difference between each of the features and clusters as follows (equation 1 from the original paper):
+
+$$
+V(j,k) = \sum_{i=1}^N a_k(x_i)(x_i(j) - c_k(j))
+$$
+
+where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety.
+
+### Triplet ranking loss
+
+In order to be able to train the proposed layer in an end-to-end fashion, the paper suggests to use training tuples. Each training tuple consists of a query image $q$, the best matching positive image $p_{i*}^q$ that lies within $10$ meters of the query image (geographically) and a couple of negative images \{q_j\}, which are further than $25$ meters away from the query image. We want to train the NetVLAD layer to assign features to clusters in such a way that the distance between a query and the best positive $d(q, p)$ is always less (by some margin $m$) than the distance between the query and any of the negative images $d(q,n)$. To this end, the paper proposes a weakly supervised ranking loss $L_\theta$, which is defined as follows (equation 7 in the original paper):
+
+$$
+L_\theta = \sum_j l(\min_i{d_\theta^2(q, p_i)} + m - d^2_\theta(q, n_j^q))
+$$
+
+In this equation, the $l(x)$ denotes the hinge loss $l(x)=\max(x, 0)$. This is the loss for one training tuple, so during a training epoch, we want to minimize the sum of all such losses over the entire train dataset.
+
+### Recall@N accuracy
+
+In order to be able to evaluate the proposed network we need a way to measure its accuracy. To this end the recall@N accuracy is proposed. In this particular application, the recall@N accuracy is the percentage of queries for which at least one out of the top N results from the database (VLAD vectors with the smallest difference) is within $25$ meters of the query image.
 
 ## Implementation
 
