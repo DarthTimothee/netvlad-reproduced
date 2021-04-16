@@ -131,10 +131,12 @@ if __name__ == '__main__':
     # Specify the type of pooling to use
     # pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network,
     #                         cluster_samples=num_cluster_samples)
-    pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
+    # pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
+    pooling_layer = nn.Identity()
 
     # Create the full net
     net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
+    net.K = N
 
     if load_model_path:
         net.load_state_dict(torch.load(load_model_path))
