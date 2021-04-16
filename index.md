@@ -115,8 +115,6 @@ criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
                                              margin=m, reduction='sum')
 ```
 
-![NetVLAD banner image](/netvlad-banner.png)
-
 ### Experiments
 
 #### Test setup
@@ -131,3 +129,5 @@ criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
 | image scale     | 224                        |
 | alpha           | 0.1                        |
 | K               | 64                         |
+
+![NetVLAD banner image](/netvlad-banner.png)
