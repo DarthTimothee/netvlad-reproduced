@@ -17,7 +17,7 @@ The difficulty of this problem is that 2 photos taken in the same location might
 
 ## Solution
 
-Before we describe the proposed solution in a more in-depth fashion, we summarize it as follows: Features of a query image are first extracted, using a base network like AlexNet, or VGG16. These are then fed through a new kind of layer, the NetVLAD layer, which assigns the features to cluster centers. The proximity to each these cluster centers is then used to build a fixed-sized feature representation vector, the VLAD vector, of the image that can be used to compare it to images. If their VLAD vectors are very similar, the images are likely to be taken a at (geographically) close location. In this section we describe the proposed NetVLAD layer, and it can be trained and evaluated.
+Before we describe the proposed solution in a more in-depth fashion, we summarize it as follows: Features of a query image are first extracted, using a base network like AlexNet, or VGG16. These are then fed through a new kind of layer, the NetVLAD layer, which assigns the features to cluster centers. The proximity to each these cluster centers is then used to build a fixed-sized feature representation vector, the VLAD vector, of the image that can be used to compare it to images. If their VLAD vectors are very similar, the images are likely to be taken a at (geographically) close location. In this section we describe the proposed NetVLAD layer, and how it can be trained and evaluated.
 
 ### NetVLAD layer
 
@@ -45,7 +45,7 @@ In order to be able to evaluate the proposed network we need a way to measure it
 
 ### Base network
 
-We use 2 different models for the base network, Alexnet and VGG-16. For both models, we use a pretrained version. The last layers after the last convolution layer are removed since they will be replaced with the NetVLAD pooling layer. We only train the last convolution layer of the base network. The paper didn't exactly specify how many layers they trained to get their result, but they do say the largest improvements are thanks to training the NetVLAD layer, and almost no improvement by training more layers other than the last one.
+We use 2 different models for the base network, Alexnet and VGG-16. For both models, we use a pretrained version. The last layers after the last convolution layer are removed since they will be replaced with the NetVLAD pooling layer. We only train the last convolution layer of the base network. The paper didn't exactly specify how many layers they trained to get their result, but it does state that the largest improvements are thanks to training the NetVLAD layer, and almost no improvement by training more layers other than the last one.
 
 ### Pooling layers
 
@@ -65,11 +65,11 @@ Each image in the database needs to be preprocessed and converted to a tensor be
 ```python
 if path.exists(query_filename):
     print("Using preprocessed data", r)
-    self.query_tensors = np.memmap(query_filename, dtype="float32", mode="r", shape=query_stash_shape)
-    self.image_tensors = np.memmap(image_filename, dtype="float32", mode="r", shape=image_stash_shape)
+    self.query_tensors = np.memmap(query_filename, ...)
+    self.image_tensors = np.memmap(image_filename, ...)
 ```
 
-In order to calculate the loss for each query-image, it requires the VLAD-vector of at least 1000 other database images. For the training dataset, we compute these vectors regularly and store them in a cache which is updated after a certain number of queries. For the test set, the cache is only updated once every epoch, because the VLAD-vectors are only used in order to compute the loss and accuracy.
+In order to calculate the loss for each query-image, it requires the VLAD-vector of at least 1000 other database images. For the training dataset, we compute these vectors regularly and store them in a cache which is updated after a certain number of queries. For the test set, the cache is only updated once every epoch, because the network doesn't change during the test phase.
 
 ```python
 net.freeze()
@@ -79,4 +79,14 @@ with torch.no_grad():
     # iterate through batches
     for q_vlad, p_vlad, n_vlads in test_loader:
         loss = sum([criterion(q_vlad, p_vlad, n_vlad) for n_vlad in n_vlads])
+```
+
+The loss is calculated with the TripletMarginWithDistanceLoss class using a custom distance function. There is also a TripletMarginLoss class which we first considered to use, but the problem is that it doesn't use the squared distances.
+
+```python
+def custom_distance(x1, x2):
+    return torch.pairwise_distance(x1, x2) ** 2
+
+criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance,
+                                             margin=m, reduction='sum')
 ```
