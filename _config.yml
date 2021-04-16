@@ -1,4 +1,4 @@
-theme: jekyll-theme-hacker
+theme: jekyll-theme-time-machine
 markdown: kramdown
 kramdown:
     math_engine: katex
