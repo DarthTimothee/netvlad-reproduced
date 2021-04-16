@@ -52,10 +52,11 @@ We use 2 different models for the base network, Alexnet and VGG-16. For both mod
 
 ### Pooling layers
 
+We implemented 2 different types of pooling, the NetVLAD layer as described in the paper and fmax pooling.
+
 #### fmax
 
-We implemented 2 different types of pooling, the NetVLAD layer as described in the paper and fmax pooling.
-For the fmax pooling, we used the AdaptiveMaxPool2d from pytorch in order to specify the output dimension. Initialy, the output dimension were hardcoded to (1,1), because the resulting accuracy seemed to match the one in the paper. In the experiments, we also look at what happens with different dimensions.
+For the fmax pooling, we used the AdaptiveMaxPool2d from pytorch in order to specify the output dimension. From the paper, it was not clear to us what the output dimension was actually supposed to be. Eventually, we hardcoded the output dimension to (1,1), because the resulting accuracy seemed to match the one in the paper. Towards the end of the project, we discovered that using a higher output dimension resulted in a higher accuracy, but unfortunately, we didn't have enough time left to setup and run a proper experiment. 
 
 #### NetVLAD
 
