@@ -146,6 +146,8 @@ All our results use the following hyperparameters:
 
 ### Results
 
+Below are the resulting accuracies after training the networks. After our result is a copy of the result from the original paper.
+
 #### Our results
 
 ![Figure with our results](/fig5a.png)
@@ -154,7 +156,7 @@ All our results use the following hyperparameters:
 
 ![Original paper results](/netvlad-og-plots.png)
 
-Looking
+Looking at the graphs, we notice that our off-the-shelf accuracies are similar, but become comparatively lower after training.
 
 ## Conclusion
 
