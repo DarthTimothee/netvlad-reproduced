@@ -6,7 +6,7 @@ _Elwin Duinkerken & Timo Verlaan_
 
 ## Introduction
 
-In this article we will discuss the results and progress we made during the reproduction project for the CS4240 Deep Learning course. We reproduced the paper NetVLAD: CNN architecture for weakly supervised place recognition, in which an end-to-end trainable layer for image retrieval is proposed.
+In this article we will discuss the results and progress we made during the reproduction project for the `CS4240 Deep Learning` course. We reproduced the paper `NetVLAD: CNN architecture for weakly supervised place recognition`, in which an end-to-end trainable layer for image retrieval is proposed.
 
 We will start by describing the problem the paper attempts to solve and their proposed solution. After that we will describe our implementation of this solution and support some of the design choices we made. Next, we discuss the experiments we ran, the results we got and compare them to the original results of the paper. Finally we draw some conclusions on the reproducibility of this paper and reflect on our development process.
 
@@ -19,13 +19,19 @@ The difficulty of this problem is that 2 photos taken in the same location might
 
 Before we describe the proposed solution in a more in-depth fashion, we summarize it as follows: Features of a query image are first extracted, using a base network like AlexNet, or VGG16. These are then fed through a new kind of layer, the NetVLAD layer, which assigns the features to cluster centers. The proximity to each these cluster centers is then used to build a fixed-sized feature representation vector, the VLAD vector, of the image that can be used to compare it to images. If their VLAD vectors are very similar, the images are likely to be taken a at (geographically) close location. In this section we describe the proposed NetVLAD layer, and how it can be trained and evaluated.
 
+![NetVLAD banner image](/netvlad-banner.png)
+
+
 ### NetVLAD layer
 
 In the NetVLAD layer, we want to assign each input feature that comes out of the base network to one of the predefined cluster centers. More specifically, we use a convolution layer, followed by a softmax layer layer to calculate the soft-assignment $\bar{a}_k(x_i)$ of each of the features $x_i$ to each of the $k$-th cluster center. We then use this soft-assignment to weigh the difference between each of the features and clusters as follows (equation 1 from the original paper):
 
 ![equation 1](/netvlad-eqn1.gif)
 
-where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety.
+where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety. The VLAD layer is shown schematically in the figure below (image credits to the original paper):
+
+![NetVLAD layer image](/netvlad-fig2.png)
+
 
 ### Triplet ranking loss
 
@@ -57,6 +63,26 @@ For the fmax pooling, we used the AdaptiveMaxPool2d from pytorch in order to spe
 #### NetVLAD
 
 The NetVLAD convolution layer initializes the weights and biases using an alpha parameter. According to the paper, this value should be computed so that the ratio of the largest and the second largest soft assignment weight is on average equal to 100. Since we were unsure on how to implement this, we instead looked at the effect of different values for alpha and picked the best one as the final value to use.
+
+To implement the VLAD vector calculation in pytorch, we restructed equation 1 as follows:
+
+$$
+V(j,k) = \sum_{i=1}^N a_k(x_i)(x_i(j) - c_k(j))
+$$
+$$
+= \sum_{i=1}^N ( a_k(x_i) x_i(j) - a_k(x_i) c_k(j) )
+$$
+$$
+= \sum_{i=1}^N a_k(x_i) x_i(j) - c_k(j) \sum_{i=1}^N a_k(x_i)
+$$
+
+The last sum over the soft assignments can then be implemented using `torch.sum` turning the second half of the expression into a vector-scalar product. The first half is calculated using `torch.bmm` the built-in tensor operation for batch-wise matrix multiplication. By reshaping the a_bar and x before putting them into the equation, we allow the calculation to be carried out for all the features at once, instead of having to loop over the indices `j` and `k` in `V`. The final (simplified) VLAD core calculation is:
+
+```python
+V = torch.bmm(a_bar, x) - c * torch.sum(a_bar)
+```
+
+where `a_bar` is the soft-assignment and c are the cluster centers.
 
 ### Database
 
