@@ -102,6 +102,8 @@ if path.exists(query_filename):
     self.image_tensors = np.memmap(image_filename, ...)
 ```
 
+One of the operations during the preprocessing step, is input whitening. According to the paper, this gives slightly better results compared to the non-whitening variants. Unfortually, we were not able to implement this within the time of the project.
+
 In order to calculate the loss for each query-image, it requires the VLAD-vector of at least 1000 other database images. For the training dataset, we compute these vectors regularly and store them in a cache which is updated after a certain number of queries. For the test set, the cache is only updated once every epoch, because the network doesn't change during the test phase.
 
 ```python
