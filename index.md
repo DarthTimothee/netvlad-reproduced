@@ -18,9 +18,7 @@ Before we describe the proposed solution in a more in-depth fashion, we summariz
 
 In the NetVLAD layer, we want to assign each input feature that comes out of the base network to one of the predefined cluster centers. More specifically, we use a convolution layer, followed by a softmax layer layer to calculate the soft-assignment $\bar{a}_k(x_i)$ of each of the features $x_i$ to each of the $k$-th cluster center. We then use this soft-assignment to weigh the difference between each of the features and clusters as follows (equation 1 from the original paper):
 
-$$
-V(j,k) = \sum_{i=1}^N a_k(x_i)(x_i(j) - c_k(j))
-$$
+![equation 1](/netvlad-eqn1.gif)
 
 where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety.
 
