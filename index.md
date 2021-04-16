@@ -149,9 +149,11 @@ All our results use the following hyperparameters:
 
 ### Results
 
-Below are the resulting accuracies after training the networks. After our result is a copy of the result from the original paper.
+Below are the resulting accuracies before and after training the networks. After our result is a copy of the result from the original paper.
 
 #### Our results
+
+We tested two different base-networks: Alexnet and VGG-16. We tried every combination of base-network with one of the following three pooling strategies: fvlad pooling, fmax pooling and no pooling. For every combination we tested the accuracy off-the-shelf, and after training. The "no pooling" strategy is not evaluated anywhere in the original paper. All the other tests were all present in the paper. The results of the original tests are shown in the next subsection.
 
 ![Figure with our results](/fig5a.png)
 
