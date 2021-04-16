@@ -68,7 +68,7 @@ a_bar = F.softmax(self.conv(x), dim=1)
 
 Here, the `self.conv` attribute is initialized as `torch.nn.Conv2d` module, with the weights and biases initialized using an $\alpha$ parameter. According to the paper, this value should be computed so that the ratio of the largest and the second largest soft assignment weight is on average equal to 100. Since we were unsure on how to implement this, we instead looked at the effect of different values for alpha and picked the best one as the final value to use. The figure below shows the off-the-shelf (without any additional training, because we are looking for the best possible initialization) recall@N accuracies for several $\alpha$ values:
 
-!(Graph showing off-the-shelf recall@N accuracies for several alpha)[/fig-tune-alpha.png]
+![Graph showing off-the-shelf recall@N accuracies for several alpha](/fig-tune-alpha.png)
 
 Based on this graph, and keeping in mind that we do not want the weights to grow unnecessarily large, we decided on the value $\alpha = 0.1$. Using this value we initialize the weights and biases of the convolutional layer as the paper proposes:
 
