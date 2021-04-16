@@ -146,9 +146,17 @@ All our results use the following hyperparameters:
 
 ### Results
 
+#### Our results
+
 ![Figure with our results](/fig5a.png)
 
+#### Original paper results
+
 ![Original paper results](/netvlad-og-plots.png)
+
+Looking
+
+## Conclusion
 
 
 
