@@ -169,6 +169,11 @@ We also tested the accuracy when we remove the pooling layer entirely and only u
 
 After having already done all of the experiments we also found out that we did the cropping of the images slightly different than how this is usually done in similar applications (but the paper does not explicitly mention how they did this). We immediately scaled down the `(480 x 640)` images to `(224 x 224)`, while usually it is first scaled down such that the smallest dimension is `224` pixels, and then cropped to `224` pixels over the other dimension. In addition to this, we found out that AlexNet is pretrained using `(256 x 256)` images, while we are then using it with images scaled down to `(224 x 224)`. We ran a couple of small tests, and it did not have a significant impact on the off-the-shelf performance, but it could still be the case that this has a negative impact on the results we got.
 
+![loss and accuracies for large learning rate](/fvlad-large-learn-rate.png)
+
+![loss and accuracies for smaller learning rate](/fvlad-small-learn-rate.png)
+
+
 ## Conclusion
 
 As shown in the section above, our off-the-shelf is quite similar to the results presented in the paper's table 1, but slightly less than the results shown in their figures. We don't know exactly why this is the case, because we don't know why the paper has better performance on the test set than on the validation set. Probable causes of this problem could be due to the size of the dataset, small differences between the test and validation set, or maybe scaling of the images, but since the paper does not clearly state any of these, we cannot know for sure which is the cause.
