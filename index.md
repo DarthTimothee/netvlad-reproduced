@@ -60,8 +60,22 @@ For the fmax pooling, we used the AdaptiveMaxPool2d from pytorch in order to spe
 
 #### NetVLAD
 
-The NetVLAD convolution layer initializes the weights and biases using an alpha parameter. According to the paper, this value should be computed so that the ratio of the largest and the second largest soft assignment weight is on average equal to 100. Since we were unsure on how to implement this, we instead looked at the effect of different values for alpha and picked the best one as the final value to use.
+As described in the previous section, the NetVLAD layer uses a convolution followed by a softmax to get the soft-assignments of the feature vectors to each of the clusters. We implemented this in pytorch as follows:
 
+```python
+a_bar = F.softmax(self.conv(x), dim=1)
+```
+
+Here, the `self.conv` attribute is initialized as `torch.nn.Conv2d` module, with the weights and biases initialized using an $\alpha$ parameter. According to the paper, this value should be computed so that the ratio of the largest and the second largest soft assignment weight is on average equal to 100. Since we were unsure on how to implement this, we instead looked at the effect of different values for alpha and picked the best one as the final value to use. The figure below shows the off-the-shelf (without any additional training, because we are looking for the best possible initialization) recall@N accuracies for several $\alpha$ values:
+
+![Graph showing off-the-shelf recall@N accuracies for several alpha](/fig-tune-alpha.png)
+
+Based on this graph, and keeping in mind that we do not want the weights to grow unnecessarily large, we decided on the value $\alpha = 0.1$. Using this value we initialize the weights and biases of the convolutional layer as the paper proposes:
+
+```python
+self.conv.weight = nn.Parameter(2.0 * self.alpha *  self.c)
+self.conv.bias = nn.Parameter(-self.alpha * self.c.norm(dim=1) ** 2)
+```
 To implement the VLAD vector calculation in pytorch, we restructed equation 1 as follows:
 
 $$
