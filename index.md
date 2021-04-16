@@ -19,13 +19,19 @@ The difficulty of this problem is that 2 photos taken in the same location might
 
 Before we describe the proposed solution in a more in-depth fashion, we summarize it as follows: Features of a query image are first extracted, using a base network like AlexNet, or VGG16. These are then fed through a new kind of layer, the NetVLAD layer, which assigns the features to cluster centers. The proximity to each these cluster centers is then used to build a fixed-sized feature representation vector, the VLAD vector, of the image that can be used to compare it to images. If their VLAD vectors are very similar, the images are likely to be taken a at (geographically) close location. In this section we describe the proposed NetVLAD layer, and it can be trained and evaluated.
 
+![NetVLAD banner image](/netvlad-banner.png)
+
+
 ### NetVLAD layer
 
 In the NetVLAD layer, we want to assign each input feature that comes out of the base network to one of the predefined cluster centers. More specifically, we use a convolution layer, followed by a softmax layer layer to calculate the soft-assignment $\bar{a}_k(x_i)$ of each of the features $x_i$ to each of the $k$-th cluster center. We then use this soft-assignment to weigh the difference between each of the features and clusters as follows (equation 1 from the original paper):
 
 ![equation 1](/netvlad-eqn1.gif)
 
-where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety.
+where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety. The VLAD layer is shown schematically in the figure below (image credits to the original paper):
+
+![NetVLAD layer image](/netvlad-fig2.png)
+
 
 ### Triplet ranking loss
 
