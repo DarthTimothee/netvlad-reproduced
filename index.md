@@ -159,13 +159,13 @@ Below are the resulting accuracies after training the networks. After our result
 
 ![Original paper results](/netvlad-og-plots.png)
 
-Looking at the graphs, we notice that our off-the-shelf accuracies are similar, but become comparatively lower after training. Especially alexnet has significant lower accuracies in our model compared to the original paper. After running the experiments, we realized that we only used an input resolution of size 224x244, but alexnet is trained on images of resolution size 256x256. We are not sure if this difference is significant enough to explain the difference in result, and a new experiment would be needed to test this hypothesis.
+Looking at the graphs, we notice that our off-the-shelf accuracies are similar, but become comparatively lower after training. Especially alexnet has significant lower accuracies in our model compared to the original paper.
 
 We also tested the accuracy when we remove the pooling layer entirely and only use the base network. Surprisingly, the accuracies are the best in all cases when compared to the same architecture which does use a pooling layer. A downside of not using any pooling, is that the output dimension is higher, and thus slower to compare against the rest of the database images. The higher dimensionality might also explain why the accuracy is this high, since all the features of the images are being used to compare the output vectors.
 
 ### Discussion
 
-After having already done all of the experiments we also found out that we did the cropping of the images slightly different than how this is usually done in similar applications (but the paper does not explicitly mention how they did this). We immediately scaled down the `(480 x 640)` images to `(224 x 224)`, while usually it is first scaled down such that the smallest dimension is `224` pixels, and then cropped to `224` pixels over the other dimension. In addition to this, we found out that AlexNet is pretrained using `(256 x 256)` images, while we are then using it with images scaled down to `(224 x 224)`. We ran a couple of small tests, and it did not have a significant impact on the off-the-shelf performance, but it could still be the case that after training this has a negative impact on the results we got.
+After having already done all of the experiments we also found out that we did the cropping of the images slightly different than how this is usually done in similar applications (but the paper does not explicitly mention how they did this). We immediately scaled down the `(480 x 640)` images to `(224 x 224)`, while usually it is first scaled down such that the smallest dimension is `224` pixels, and then cropped to `224` pixels over the other dimension. In addition to this, we found out that AlexNet is pretrained using `(256 x 256)` images, while we are then using it with images scaled down to `(224 x 224)`. We ran a couple of small tests, and it did not have a significant impact on the off-the-shelf performance, but it could still be the case that this has a negative impact on the results we got.
 
 ## Conclusion
 
@@ -173,9 +173,9 @@ As shown in the section above, our off-the-shelf is quite similar to the results
 
 The results after training until convergence are promising, but also not the same as the results presented in the paper. Again, this could be causes by differences in (size of) the training and validation sets used. Additionally, we believe hyperparameter tuning can have a big impact on the performance after training as well, but we did not have enough time left to try a lof of different training parameters.
 
-Another remarkable result, is that during our the experiments, the model that performed best was actually just the base network without any form of pooling, although it does not perform as good as the achieved results of the paper.
+Another remarkable result, is that during our the experiments, the model that performed best was actually just the base network without any form of pooling, although it does not perform as good as the achieved results of the paper. But, as was already mentioned in the results, this might not be a fair comparison, because the output size of this model is much larger.
 
-Finally, we were not able to implement the input PCA whitening, because we did not have enough time left. This would likely have changed the optimal achieved results a bit, but it would not have changed the differences in the the results obtained by the models without whitening.
+Finally, we were not able to implement the input whitening, because we did not have enough time left. This would likely have changed the optimal achieved results a bit, but it would not have changed the differences in the the results obtained by the models without whitening.
 
 Taking all of the above into account, we believe we reproduced the paper up to some extent. Some of our results are not as good as the results aquired in the original paper, but it seems plausible that with some extra hyperparameter tuning and tweaking of the dataset and preprocessing their results can be reproduced. There are however, a couple of factors that make reproducing this paper very difficult: some steps in the proposed approach are not clearly defined, and can very well be interpreted in different ways. An example of this is the calculation of the cluster centers, which is not described clear enough to implement, so we had to guess here and there what was meant. Similarly, the input sizes and processing are not mentioned, which we believe is one of the factors that impacted our results in a negative way.
 
@@ -185,4 +185,4 @@ Taking all of the above into account, we believe we reproduced the paper up to s
 
 ## Appendix
 
-[https://arxiv.org/abs/1511.07247][NetVLAD: CNN architecture for weakly supervised place recognition]
+Original paper: ![NetVLAD: CNN architecture for weakly supervised place recognition](https://arxiv.org/abs/1511.07247)
