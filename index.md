@@ -42,7 +42,7 @@ In this equation, the ![l(x)](/l-x-.gif) denotes the hinge loss ![l(x)=max(x,0)]
 
 ### Recall@N accuracy
 
-In order to be able to evaluate the proposed network we need a way to measure its accuracy. To this end the recall@N accuracy is proposed. In this particular application, the recall@N accuracy is the percentage of queries for which at least one out of the top N results from the database (VLAD vectors with the smallest difference) is within 25 meters of the query image.
+In order to be able to evaluate a network we need a way to measure its accuracy. To this end the recall@N accuracy is used. In this particular application, the recall@N accuracy is the percentage of queries for which at least one out of the top N results from the database (VLAD vectors with the smallest difference) is within 25 meters of the query image.
 
 ## Implementation
 
@@ -166,3 +166,7 @@ We also tested the accuracy when we remove the pooling layer entirely and only u
 
 
 ![NetVLAD banner image](/netvlad-banner.png)
+
+## Appendix
+
+[https://arxiv.org/abs/1511.07247][NetVLAD: CNN architecture for weakly supervised place recognition]
