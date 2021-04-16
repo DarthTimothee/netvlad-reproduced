@@ -33,3 +33,5 @@ python3 ./main.py DATAFOLDER
 ```
 
 where `DATAFOLDER` should point to the directory containing all the training and test images and queries, and a sub-directory `datasets` that contains the database files.
+
+The `test_off_the_shelf.py` script can be used to quickly evaluate off-the-shelf model setups without training and does not take any input parameters. The path to the dataset has to be manually configured in the file.
