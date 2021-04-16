@@ -142,10 +142,10 @@ class AlexBase(nn.Module):
             param.requires_grad = True
 
 
-class VGG16(nn.Module):
+class VGG16Base(nn.Module):
 
     def __init__(self):
-        super(VGG16, self).__init__()
+        super(VGG16Base, self).__init__()
 
         # Setup base network
         self.full_cnn = models.vgg16(pretrained=True, progress=True)
@@ -154,22 +154,21 @@ class VGG16(nn.Module):
         for param in self.features.parameters():
             param.requires_grad = False
 
-        # TODO: unfreeze correct layers
-        for param in self.features[-1].parameters():
+        for param in self.features[-5].parameters():
             param.requires_grad = True
 
     def forward(self, x):
         return self.features(x.to(device))
 
     def get_output_dim(self):
-        return self.features[-1].out_channels  # TODO: klopt dit?
+        return self.features[-1].out_channels
 
     def freeze(self):
         self.eval()
-        for param in self.features[-1].parameters():  # TODO: correct layers
+        for param in self.features[-5].parameters():
             param.requires_grad = False
 
     def unfreeze(self):
         self.train()
-        for param in self.features[-1].parameters():  # TODO: correct layers
+        for param in self.features[-5].parameters():
             param.requires_grad = True
