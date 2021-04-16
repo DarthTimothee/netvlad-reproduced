@@ -95,8 +95,6 @@ if __name__ == '__main__':
     preprocessing_mode = 'disk'
     assert preprocessing_mode in ['disk', 'ram', None]
     save_model = True
-    load_model_path = None  # TODO: import net from file
-    # torch.set_num_threads(4)
 
     # Create the databases + datasets + dataloaders
     train_database = Database(data_path=DATA_PATH, database='pitts30k_train', input_scale=input_scale,
@@ -115,8 +113,8 @@ if __name__ == '__main__':
         test_loader = DataLoader(test_set, batch_size=batch_size)
 
     # Create instance of Network
-    base_network = VGG16Base().to(device)
-    # base_network = AlexBase().to(device)
+    # base_network = VGG16Base().to(device)
+    base_network = AlexBase().to(device)
 
     # Get the N by passing a random image from the dataset though the network
     sample_out = base_network(train_database.get_query_tensor(0))
@@ -125,25 +123,21 @@ if __name__ == '__main__':
 
     # Create loss function and optimizer
     pairwise_distance = nn.PairwiseDistance()
-    criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum').to(device)
-    # criterion = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum').to(device)
+    criterion = nn.TripletMarginWithDistanceLoss(distance_function=custom_distance, margin=m, reduction='sum').to(
+        device)
 
     # Specify the type of pooling to use
-    # pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network,
-    #                         cluster_samples=num_cluster_samples)
+    pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network,
+                            cluster_samples=num_cluster_samples)
     # pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
-    pooling_layer = nn.Identity()
+    # pooling_layer = nn.Identity()
 
     # Create the full net
     net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
     net.K = N
 
-    if load_model_path:
-        net.load_state_dict(torch.load(load_model_path))
-
     # optimizer = optim.SGD(filter(lambda p: p.requires_grad,
     #                              net.parameters()), lr=lr, momentum=momentum, weight_decay=wd)
-
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=wd)
 
     # Write the architecture of the net
@@ -191,5 +185,3 @@ if __name__ == '__main__':
     print('Finished Training')
     writer.flush()
     writer.close()
-
-    # TODO: test model with highest accuracy on test set

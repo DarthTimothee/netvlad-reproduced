@@ -2,7 +2,11 @@ import faiss
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from torch import cuda
+from helpers import get_device
 import time
+
+device = get_device()
+
 
 def validate(net, database, use_faiss=True):
     all_n = [1, 2, 3, 4, 5, 10, 15, 20, 25]
@@ -14,11 +18,18 @@ def validate(net, database, use_faiss=True):
         faiss_index = faiss.IndexFlatL2(net.D * net.K)
 
         if cuda.is_available():
+            net.cpu()
+            cuda.empty_cache()
+            config = faiss.GpuIndexFlatConfig()
+            config.useFloat16 = True
             res = faiss.StandardGpuResources()
-            faiss_index = faiss.GpuIndexFlatL2(res, faiss_index)
+            faiss_index = faiss.GpuIndexFlatL2(res, faiss_index, config)
 
         faiss_index.add(database.cache.image_vlads)
         _, all_neighbors = faiss_index.search(database.cache.query_vlads, max(all_n))
+
+        if cuda.is_available():
+            net.to(device)
 
     else:
         print('Sklearn -> fitting to cache for validation')

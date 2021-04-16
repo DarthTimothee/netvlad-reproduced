@@ -79,6 +79,7 @@ class NetVLAD(nn.Module):
                 features[i * N:(i + 1) * N] = feature.reshape(self.D, N).T
 
         features = features.cpu().detach().numpy()
+        # TODO: could also use faiss-gpu here, but is only used once at startup
         model = faiss.Kmeans(self.D, self.K, niter=100, verbose=False)
         model.train(features)
         return model.centroids, features

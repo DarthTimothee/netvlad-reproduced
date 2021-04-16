@@ -58,11 +58,11 @@ class Vlataset(Dataset):
     def _best_positive(self, query_id):
         sorted_positives = sorted(self.potential_positives[query_id],
                                   key=lambda image_id: self.__distance_to_query(query_id, image_id))
-        return sorted_positives[0]  # TODO: some queries don't have any positives?
+        return sorted_positives[0]
 
     def __get_1000_negatives(self, query_id):
         negatives = list()
-        while len(negatives) < 1000:  # TODO: maybe optimize later?
+        while len(negatives) < 1000:
             image_id = random.randint(0, self.database.num_images - 1)
             if image_id != query_id \
                     and image_id not in self.previous_hard_negatives[query_id] \
