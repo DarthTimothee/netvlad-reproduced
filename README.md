@@ -12,6 +12,8 @@ Original paper: [NetVLAD: CNN architecture for weakly supervised place recogniti
 
 ## Results
 
+![Figure 5a reproduction](/plots/fig5a.png)
+
 The blog post about this reproduction study, containing all of our results can be found here: [https://darthtimothee.github.io/netvlad-reproduced/](https://darthtimothee.github.io/netvlad-reproduced/)
 
 
