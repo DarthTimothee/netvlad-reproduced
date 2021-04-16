@@ -17,7 +17,7 @@ device = get_device()
 
 class Database:
     def __init__(self, data_path, database, input_scale=224, preprocess_mode=None, whitening=False):
-        self.input_scale = (input_scale, input_scale) if isinstance(input_scale, int) else input_scale
+        self.input_scale = input_scale if isinstance(input_scale, int) else input_scale
         self.preprocess_mode = preprocess_mode
         self.whitening = whitening
         self.data_path = data_path
@@ -60,7 +60,9 @@ class Database:
 
     def __get_input_transform(self):
         return transforms.Compose(list(filter(None, [
-            transforms.Resize(size=self.input_scale) if self.input_scale else None,
+            # transforms.Resize(size=self.input_scale) if self.input_scale else None,
+            transforms.Resize(self.input_scale),
+            transforms.CenterCrop(self.input_scale),
             transforms.ToTensor(),
             None if self.whitening else None,  # TODO: PCA whitening
 
@@ -113,7 +115,7 @@ class Database:
             return
 
         w = '_white' if self.whitening else ''
-        res = self.input_scale[0] if self.input_scale else 'fullres'
+        res = self.input_scale if self.input_scale else 'fullres'
         query_filename = path.join("./preprocessing", f"{r}_{self.num_queries}_{res}{w}_query_tensors.dat")
         image_filename = path.join("./preprocessing", f"{r}_{self.num_images}_{res}{w}_image_tensors.dat")
 
