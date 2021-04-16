@@ -161,11 +161,25 @@ Looking at the graphs, we notice that our off-the-shelf accuracies are similar, 
 
 We also tested the accuracy when we remove the pooling layer entirely and only use the base network. Surprisingly, the accuracies are the best in all cases when compared to the same architecture which does use a pooling layer. A downside of not using any pooling, is that the output dimension is higher, and thus slower to compare against the rest of the database images. The higher dimensionality might also explain why the accuracy is this high, since all the features of the images are being used to compare the output vectors.
 
+### Discussion
+
+After having already done all of the experiments we also found out that we did the cropping of the images slightly different than how this is usually done in similar applications (but the paper does not explicitly mention how they did this). We immediately scaled down the `(480 x 640)` images to `(224 x 224)`, while usually it is first scaled down such that the smallest dimension is `224` pixels, and then cropped to `224` pixels over the other dimension. In addition to this, we found out that AlexNet is pretrained using `(256 x 256)` images, while we are then using it with images scaled down to `(224 x 224)`. We ran a couple of small tests, and it did not have a significant impact on the off-the-shelf performance, but it could still be the case that after training this has a negative impact on the results we got.
+
 ## Conclusion
 
+As shown in the section above, our off-the-shelf is quite similar to the results presented in the paper's table 1, but slightly less than the results shown in their figures. We don't know exactly why this is the case, because we don't know why the paper has better performance on the test set than on the validation set. Probable causes of this problem could be due to the size of the dataset, small differences between the test and validation set, or maybe scaling of the images, but since the paper does not clearly state any of these, we cannot know for sure which is the cause.
+
+The results after training until convergence are promising, but also not the same as the results presented in the paper. Again, this could be causes by differences in (size of) the training and validation sets used. Additionally, we believe hyperparameter tuning can have a big impact on the performance after training as well, but we did not have enough time left to try a lof of different training parameters.
+
+Another remarkable result, is that during our the experiments, the model that performed best was actually just the base network without any form of pooling, although it does not perform as good as the achieved results of the paper.
+
+Finally, we were not able to implement the input PCA whitening, because we did not have enough time left. This would likely have changed the optimal achieved results a bit, but it would not have changed the differences in the the results obtained by the models without whitening.
+
+Taking all of the above into account, we believe we reproduced the paper up to some extent. Some of our results are not as good as the results aquired in the original paper, but it seems plausible that with some extra hyperparameter tuning and tweaking of the dataset and preprocessing their results can be reproduced. There are however, a couple of factors that make reproducing this paper very difficult: some steps in the proposed approach are not clearly defined, and can very well be interpreted in different ways. An example of this is the calculation of the cluster centers, which is not described clear enough to implement, so we had to guess here and there what was meant. Similarly, the input sizes and processing are not mentioned, which we believe is one of the factors that impacted our results in a negative way.
 
 
 ![NetVLAD banner image](/netvlad-banner.png)
+
 
 ## Appendix
 
