@@ -130,4 +130,11 @@ criterion = nn.TripletMarginWithDistanceLoss(distance_function=distance,
 | alpha           | 0.1                        |
 | K               | 64                         |
 
+
+## Plaatje voor de results
+
+![Figure with our results](/fig5a.png)
+
+
+
 ![NetVLAD banner image](/netvlad-banner.png)
