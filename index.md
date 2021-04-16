@@ -26,7 +26,7 @@ In the NetVLAD layer, we want to assign each input feature that comes out of the
 
 ![equation 1](/netvlad-eqn1.gif)
 
-where $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety. The VLAD layer is shown schematically in the figure below (image credits to the original paper):
+where ![N](/N.gif) $N$ is the number of features from the base network, which depends on the input image resolution. $a_k$ is the soft assignment, $x_i$ is a specific input feature and $c_k$ is the $k$'th cluster center. The result is a $(K x D)$ vector $V$, the VLAD vector, where $K$ is the chosen number of clusters, and $D$ is the number of output channels of the base network. This VLAD vector is then L2-normalized in a column-wise fashion (which the paper refers to as intra-normalization), flattened into a vector of length $K\dot D$ and then L2-normalized in its entirety. The VLAD layer is shown schematically in the figure below (image credits to the original paper):
 
 ![NetVLAD layer image](/netvlad-fig2.png)
 
