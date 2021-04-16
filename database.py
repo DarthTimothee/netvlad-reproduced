@@ -103,8 +103,8 @@ class Database:
 
     def __preprocess(self, name):
         r = name
-        query_stash_shape = (self.num_queries, *self.__query_tensor_from_image(0).shape)
-        image_stash_shape = (self.num_images, *self.__image_tensor_from_image(0).shape)
+        query_stash_shape = (self.num_queries, 3, 224, 224)
+        image_stash_shape = (self.num_images, 3, 224, 224)
 
         if self.preprocess_mode == 'ram':
             self.query_tensors = np.zeros(query_stash_shape, dtype="float32")

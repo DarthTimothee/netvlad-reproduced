@@ -3,6 +3,7 @@ from tempfile import mkdtemp
 import numpy as np
 import torch
 from colorama import Fore
+from torch import cuda
 
 from helpers import pbar, get_device
 
@@ -10,7 +11,7 @@ device = get_device()
 
 
 class Cache:
-    def __init__(self, database, cache_mode='ram'):
+    def __init__(self, database, cache_mode='disk'):
         self.database = database
         self.net = None
         self.query_filename = path.join(mkdtemp(), "query_vlads.dat")
@@ -20,6 +21,8 @@ class Cache:
         self.cache_mode = cache_mode
 
     def update(self, net, t_parent=None, cache_batch_size=42):
+
+        cuda.empty_cache()
 
         net.freeze()
         if not self.net:

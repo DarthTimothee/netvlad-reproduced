@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 
-from NetVLAD import AlexBase, NetVLAD, FullNetwork
+from NetVLAD import AlexBase, NetVLAD, FullNetwork, VGG16Base
 from database import Database
 from helpers import *
 from validation import validate
@@ -85,9 +85,9 @@ if __name__ == '__main__':
 
     # Hyper parameters, based on the appendix
     m = 0.1  # margin for the loss
-    lr = 0.001  # or 0.0001 depending on the experiment, which is halved every 5 epochs
+    lr = 0.0001  # or 0.0001 depending on the experiment, which is halved every 5 epochs
     momentum = 0.9
-    wd = 0.001
+    wd = 0.01  # 0.001 originally
     batch_size = 4
     epochs = 30
     num_cluster_samples = 1000
@@ -115,8 +115,8 @@ if __name__ == '__main__':
         test_loader = DataLoader(test_set, batch_size=batch_size)
 
     # Create instance of Network
-    # base_network = VGG16()  # AlexBase()
-    base_network = AlexBase().to(device)
+    base_network = VGG16Base().to(device)
+    # base_network = AlexBase().to(device)
 
     # Get the N by passing a random image from the dataset though the network
     sample_out = base_network(train_database.get_query_tensor(0))
@@ -129,8 +129,9 @@ if __name__ == '__main__':
     # criterion = nn.TripletMarginLoss(margin=m ** 0.5, reduction='sum').to(device)
 
     # Specify the type of pooling to use
-    pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network, cluster_samples=num_cluster_samples)
-    # pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
+    # pooling_layer = NetVLAD(K=64, N=N, cluster_database=train_database, base_cnn=base_network,
+    #                         cluster_samples=num_cluster_samples)
+    pooling_layer = nn.AdaptiveMaxPool2d((1, 1))
 
     # Create the full net
     net = FullNetwork(features=base_network, pooling=pooling_layer).to(device)
@@ -138,16 +139,24 @@ if __name__ == '__main__':
     if load_model_path:
         net.load_state_dict(torch.load(load_model_path))
 
-    optimizer = optim.SGD(filter(lambda p: p.requires_grad,
-                net.parameters()), lr=lr, momentum=momentum, weight_decay=wd)
+    # optimizer = optim.SGD(filter(lambda p: p.requires_grad,
+    #                              net.parameters()), lr=lr, momentum=momentum, weight_decay=wd)
 
-    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=wd)
 
     # Write the architecture of the net
     summary(net, (3, 480, 640), device='cuda' if cuda.is_available() else 'cpu')
     writer.add_graph(net, train_database.get_query_tensor(0))
 
-    # Init the cache
+    # Do an 'off-the-shelf' test
+    test_loss, test_accs = test(0, test_loader, net, criterion)
+
+    print(f"Loss on test set (before training): {test_loss}, Accuracy: {test_accs}")
+    write_accs("TestRecall@N", test_accs, writer, 0)
+    write_loss('Test', test_loss, writer, 0)
+    writer.flush()
+
+    # Init the training cache
     train_database.update_cache(net)
 
     for epoch in range(1, epochs + 1):
@@ -156,6 +165,7 @@ if __name__ == '__main__':
             lr /= 2.0
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
+            print(f"Reduced learning rate. The new lr = {lr}")
             # optimizer.learning_rate = lr
 
         # Train on data
